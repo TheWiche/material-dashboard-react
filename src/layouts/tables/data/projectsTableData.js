@@ -55,11 +55,11 @@ export default function data() {
 
   return {
     columns: [
-      { Header: "project", accessor: "project", width: "30%", align: "left" },
-      { Header: "budget", accessor: "budget", align: "left" },
-      { Header: "status", accessor: "status", align: "center" },
-      { Header: "completion", accessor: "completion", align: "center" },
-      { Header: "action", accessor: "action", align: "center" },
+      { Header: "Proyecto", accessor: "project", width: "30%", align: "left" },
+      { Header: "Presupuesto", accessor: "budget", align: "left" },
+      { Header: "Estado", accessor: "status", align: "center" },
+      { Header: "Completado", accessor: "completion", align: "center" },
+      { Header: "Acción", accessor: "action", align: "center" },
     ],
 
     rows: [
@@ -71,8 +71,8 @@ export default function data() {
           </MDTypography>
         ),
         status: (
-          <MDTypography component="a" href="#" variant="caption" color="text" fontWeight="medium">
-            working
+            <MDTypography component="a" href="#" variant="caption" color="text" fontWeight="medium">
+            en progreso
           </MDTypography>
         ),
         completion: <Progress color="info" value={60} />,
@@ -90,8 +90,8 @@ export default function data() {
           </MDTypography>
         ),
         status: (
-          <MDTypography component="a" href="#" variant="caption" color="text" fontWeight="medium">
-            done
+            <MDTypography component="a" href="#" variant="caption" color="text" fontWeight="medium">
+            completado
           </MDTypography>
         ),
         completion: <Progress color="success" value={100} />,
@@ -109,8 +109,8 @@ export default function data() {
           </MDTypography>
         ),
         status: (
-          <MDTypography component="a" href="#" variant="caption" color="text" fontWeight="medium">
-            canceled
+            <MDTypography component="a" href="#" variant="caption" color="text" fontWeight="medium">
+            cancelado
           </MDTypography>
         ),
         completion: <Progress color="error" value={30} />,
@@ -129,7 +129,7 @@ export default function data() {
         ),
         status: (
           <MDTypography component="a" href="#" variant="caption" color="text" fontWeight="medium">
-            working
+            en progreso
           </MDTypography>
         ),
         completion: <Progress color="info" value={80} />,
@@ -148,7 +148,7 @@ export default function data() {
         ),
         status: (
           <MDTypography component="a" href="#" variant="caption" color="text" fontWeight="medium">
-            canceled
+            cancelado
           </MDTypography>
         ),
         completion: <Progress color="error" value={0} />,
@@ -167,7 +167,7 @@ export default function data() {
         ),
         status: (
           <MDTypography component="a" href="#" variant="caption" color="text" fontWeight="medium">
-            done
+            completado
           </MDTypography>
         ),
         completion: <Progress color="success" value={100} />,
