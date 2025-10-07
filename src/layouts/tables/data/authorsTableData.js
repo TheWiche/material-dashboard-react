@@ -50,20 +50,20 @@ export default function data() {
 
   return {
     columns: [
-      { Header: "Autor", accessor: "author", width: "45%", align: "left" },
-      { Header: "Función", accessor: "function", align: "left" },
-      { Header: "Estado", accessor: "status", align: "center" },
-      { Header: "Fecha de ingreso", accessor: "employed", align: "center" },
-      { Header: "Acción", accessor: "action", align: "center" },
+      { Header: "author", accessor: "author", width: "45%", align: "left" },
+      { Header: "function", accessor: "function", align: "left" },
+      { Header: "status", accessor: "status", align: "center" },
+      { Header: "employed", accessor: "employed", align: "center" },
+      { Header: "action", accessor: "action", align: "center" },
     ],
 
     rows: [
       {
         author: <Author image={team2} name="John Michael" email="john@creative-tim.com" />,
-  function: <Job title="Gerente" description="Organización" />,
+        function: <Job title="Manager" description="Organization" />,
         status: (
           <MDBox ml={-1}>
-            <MDBadge badgeContent="en línea" color="success" variant="gradient" size="sm" />
+            <MDBadge badgeContent="online" color="success" variant="gradient" size="sm" />
           </MDBox>
         ),
         employed: (
@@ -79,10 +79,10 @@ export default function data() {
       },
       {
         author: <Author image={team3} name="Alexa Liras" email="alexa@creative-tim.com" />,
-  function: <Job title="Programador" description="Desarrollador" />,
+        function: <Job title="Programator" description="Developer" />,
         status: (
           <MDBox ml={-1}>
-            <MDBadge badgeContent="fuera de línea" color="dark" variant="gradient" size="sm" />
+            <MDBadge badgeContent="offline" color="dark" variant="gradient" size="sm" />
           </MDBox>
         ),
         employed: (
@@ -98,10 +98,10 @@ export default function data() {
       },
       {
         author: <Author image={team4} name="Laurent Perrier" email="laurent@creative-tim.com" />,
-  function: <Job title="Ejecutivo" description="Proyectos" />,
+        function: <Job title="Executive" description="Projects" />,
         status: (
           <MDBox ml={-1}>
-            <MDBadge badgeContent="en línea" color="success" variant="gradient" size="sm" />
+            <MDBadge badgeContent="online" color="success" variant="gradient" size="sm" />
           </MDBox>
         ),
         employed: (
@@ -117,10 +117,10 @@ export default function data() {
       },
       {
         author: <Author image={team3} name="Michael Levi" email="michael@creative-tim.com" />,
-  function: <Job title="Programador" description="Desarrollador" />,
+        function: <Job title="Programator" description="Developer" />,
         status: (
           <MDBox ml={-1}>
-            <MDBadge badgeContent="en línea" color="success" variant="gradient" size="sm" />
+            <MDBadge badgeContent="online" color="success" variant="gradient" size="sm" />
           </MDBox>
         ),
         employed: (
@@ -136,10 +136,10 @@ export default function data() {
       },
       {
         author: <Author image={team3} name="Richard Gran" email="richard@creative-tim.com" />,
-  function: <Job title="Gerente" description="Ejecutivo" />,
+        function: <Job title="Manager" description="Executive" />,
         status: (
           <MDBox ml={-1}>
-            <MDBadge badgeContent="fuera de línea" color="dark" variant="gradient" size="sm" />
+            <MDBadge badgeContent="offline" color="dark" variant="gradient" size="sm" />
           </MDBox>
         ),
         employed: (
@@ -155,10 +155,10 @@ export default function data() {
       },
       {
         author: <Author image={team4} name="Miriam Eric" email="miriam@creative-tim.com" />,
-  function: <Job title="Programador" description="Desarrollador" />,
+        function: <Job title="Programator" description="Developer" />,
         status: (
           <MDBox ml={-1}>
-            <MDBadge badgeContent="fuera de línea" color="dark" variant="gradient" size="sm" />
+            <MDBadge badgeContent="offline" color="dark" variant="gradient" size="sm" />
           </MDBox>
         ),
         employed: (
@@ -168,7 +168,7 @@ export default function data() {
         ),
         action: (
           <MDTypography component="a" href="#" variant="caption" color="text" fontWeight="medium">
-            Editar
+            Edit
           </MDTypography>
         ),
       },

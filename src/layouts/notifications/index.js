@@ -48,11 +48,11 @@ function Notifications() {
 
   const alertContent = (name) => (
     <MDTypography variant="body2" color="white">
-      Una alerta simple de {name} con{" "}
+      A simple {name} alert with{" "}
       <MDTypography component="a" href="#" variant="body2" fontWeight="medium" color="white">
-        un enlace de ejemplo
+        an example link
       </MDTypography>
-      . Haz clic si lo deseas.
+      . Give it a click if you like.
     </MDTypography>
   );
 
@@ -61,8 +61,8 @@ function Notifications() {
       color="success"
       icon="check"
       title="Material Dashboard"
-  content="¡Hola! Este es un mensaje de notificación"
-  dateTime="hace 11 minutos"
+      content="Hello, world! This is a notification message"
+      dateTime="11 mins ago"
       open={successSB}
       onClose={closeSuccessSB}
       close={closeSuccessSB}
@@ -74,8 +74,8 @@ function Notifications() {
     <MDSnackbar
       icon="notifications"
       title="Material Dashboard"
-  content="¡Hola! Este es un mensaje de notificación"
-  dateTime="hace 11 minutos"
+      content="Hello, world! This is a notification message"
+      dateTime="11 mins ago"
       open={infoSB}
       onClose={closeInfoSB}
       close={closeInfoSB}
@@ -87,8 +87,8 @@ function Notifications() {
       color="warning"
       icon="star"
       title="Material Dashboard"
-  content="¡Hola! Este es un mensaje de notificación"
-  dateTime="hace 11 minutos"
+      content="Hello, world! This is a notification message"
+      dateTime="11 mins ago"
       open={warningSB}
       onClose={closeWarningSB}
       close={closeWarningSB}
@@ -101,8 +101,8 @@ function Notifications() {
       color="error"
       icon="warning"
       title="Material Dashboard"
-  content="¡Hola! Este es un mensaje de notificación"
-  dateTime="hace 11 minutos"
+      content="Hello, world! This is a notification message"
+      dateTime="11 mins ago"
       open={errorSB}
       onClose={closeErrorSB}
       close={closeErrorSB}
@@ -118,7 +118,7 @@ function Notifications() {
           <Grid item xs={12} lg={8}>
             <Card>
               <MDBox p={2}>
-                <MDTypography variant="h5">Alertas</MDTypography>
+                <MDTypography variant="h5">Alerts</MDTypography>
               </MDBox>
               <MDBox pt={2} px={2}>
                 <MDAlert color="primary" dismissible>
@@ -152,34 +152,34 @@ function Notifications() {
           <Grid item xs={12} lg={8}>
             <Card>
               <MDBox p={2} lineHeight={0}>
-                <MDTypography variant="h5">Notificaciones</MDTypography>
+                <MDTypography variant="h5">Notifications</MDTypography>
                 <MDTypography variant="button" color="text" fontWeight="regular">
-                  Las notificaciones en esta página usan Toasts de Bootstrap. Lee más detalles aquí.
+                  Notifications on this page use Toasts from Bootstrap. Read more details here.
                 </MDTypography>
               </MDBox>
               <MDBox p={2}>
                 <Grid container spacing={3}>
                   <Grid item xs={12} sm={6} lg={3}>
                     <MDButton variant="gradient" color="success" onClick={openSuccessSB} fullWidth>
-                      notificación de éxito
+                      success notification
                     </MDButton>
                     {renderSuccessSB}
                   </Grid>
                   <Grid item xs={12} sm={6} lg={3}>
                     <MDButton variant="gradient" color="info" onClick={openInfoSB} fullWidth>
-                      notificación informativa
+                      info notification
                     </MDButton>
                     {renderInfoSB}
                   </Grid>
                   <Grid item xs={12} sm={6} lg={3}>
                     <MDButton variant="gradient" color="warning" onClick={openWarningSB} fullWidth>
-                      notificación de advertencia
+                      warning notification
                     </MDButton>
                     {renderWarningSB}
                   </Grid>
                   <Grid item xs={12} sm={6} lg={3}>
                     <MDButton variant="gradient" color="error" onClick={openErrorSB} fullWidth>
-                      notificación de error
+                      error notification
                     </MDButton>
                     {renderErrorSB}
                   </Grid>
