@@ -51,7 +51,7 @@ import Icon from "@mui/material/Icon";
 const routes = [
   {
     type: "collapse",
-  name: "Panel de Control",
+    name: "Dashboard",
     key: "dashboard",
     icon: <Icon fontSize="small">dashboard</Icon>,
     route: "/dashboard",
@@ -59,7 +59,7 @@ const routes = [
   },
   {
     type: "collapse",
-  name: "Tablas",
+    name: "Tables",
     key: "tables",
     icon: <Icon fontSize="small">table_view</Icon>,
     route: "/tables",
@@ -67,7 +67,7 @@ const routes = [
   },
   {
     type: "collapse",
-  name: "Facturación",
+    name: "Billing",
     key: "billing",
     icon: <Icon fontSize="small">receipt_long</Icon>,
     route: "/billing",
@@ -75,7 +75,7 @@ const routes = [
   },
   {
     type: "collapse",
-  name: "RTL",
+    name: "RTL",
     key: "rtl",
     icon: <Icon fontSize="small">format_textdirection_r_to_l</Icon>,
     route: "/rtl",
@@ -83,7 +83,7 @@ const routes = [
   },
   {
     type: "collapse",
-  name: "Notificaciones",
+    name: "Notifications",
     key: "notifications",
     icon: <Icon fontSize="small">notifications</Icon>,
     route: "/notifications",
@@ -91,7 +91,7 @@ const routes = [
   },
   {
     type: "collapse",
-  name: "Perfil",
+    name: "Profile",
     key: "profile",
     icon: <Icon fontSize="small">person</Icon>,
     route: "/profile",
@@ -99,7 +99,7 @@ const routes = [
   },
   {
     type: "collapse",
-  name: "Iniciar Sesión",
+    name: "Sign In",
     key: "sign-in",
     icon: <Icon fontSize="small">login</Icon>,
     route: "/authentication/sign-in",
@@ -107,7 +107,7 @@ const routes = [
   },
   {
     type: "collapse",
-  name: "Crear Cuenta",
+    name: "Sign Up",
     key: "sign-up",
     icon: <Icon fontSize="small">assignment</Icon>,
     route: "/authentication/sign-up",
