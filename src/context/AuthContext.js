@@ -2,42 +2,51 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "services/firebaseService"; // Importamos el 'auth' de nuestro servicio
+import { doc, getDoc } from "firebase/firestore"; // 👈 Se importan funciones de Firestore
+import { auth, db } from "services/firebaseService"; // 👈 Se importa 'db'
+import PropTypes from "prop-types";
 
 const AuthContext = createContext();
 
-// Hook personalizado para usar el contexto fácilmente
 export const useAuth = () => {
   return useContext(AuthContext);
 };
 
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
+  const [userProfile, setUserProfile] = useState(null); // 👈 NUEVO: Estado para el perfil de Firestore
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // onAuthStateChanged es un listener de Firebase que se activa
-    // cada vez que el estado de autenticación cambia (login/logout).
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
-      setLoading(false); // Dejamos de cargar una vez que sabemos si hay usuario o no
+
+      // 👈 Si hay un usuario, busca su perfil en Firestore
+      if (user) {
+        const userDocRef = doc(db, "users", user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        if (userDocSnap.exists()) {
+          setUserProfile(userDocSnap.data()); // Guarda el perfil completo
+        }
+      } else {
+        setUserProfile(null); // Limpia el perfil al cerrar sesión
+      }
+
+      setLoading(false);
     });
 
-    // Cleanup: nos desuscribimos del listener cuando el componente se desmonte
     return unsubscribe;
   }, []);
-  
+
   const value = {
     currentUser,
-    // Aquí podrías añadir las funciones de login, register, etc. si quieres
-    // llamarlas directamente desde el contexto, pero por ahora las llamaremos
-    // desde las páginas de login/register directamente desde el servicio.
+    userProfile, // 👈 Se exporta el perfil para que cualquier componente lo pueda usar
+    loading,
   };
 
-  // No renderizamos la app hasta que termine de cargar el estado de auth
-  return (
-    <AuthContext.Provider value={value}>
-      {!loading && children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
+};
+
+AuthProvider.propTypes = {
+  children: PropTypes.node.isRequired,
 };
