@@ -1,17 +1,10 @@
-/**
-=========================================================
-* Material Dashboard 2 React - v2.2.0
-=========================================================
+// src/layouts/dashboard/index.js
 
-* Product Page: https://www.creative-tim.com/product/material-dashboard-react
-* Copyright 2023 Creative Tim (https://www.creative-tim.com)
-
-Coded by www.creative-tim.com
-
- =========================================================
-
-* The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-*/
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom"; // 👈 Se importa useNavigate
+import { collection, query, onSnapshot, where } from "firebase/firestore";
+import { db } from "services/firebaseService";
+import { useAuth } from "context/AuthContext";
 
 // @mui material components
 import Grid from "@mui/material/Grid";
@@ -23,137 +16,97 @@ import MDBox from "components/MDBox";
 import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
 import DashboardNavbar from "examples/Navbars/DashboardNavbar";
 import Footer from "examples/Footer";
-import ReportsBarChart from "examples/Charts/BarCharts/ReportsBarChart";
-import ReportsLineChart from "examples/Charts/LineCharts/ReportsLineChart";
 import ComplexStatisticsCard from "examples/Cards/StatisticsCards/ComplexStatisticsCard";
 
-// Data
-import reportsBarChartData from "layouts/dashboard/data/reportsBarChartData";
-import reportsLineChartData from "layouts/dashboard/data/reportsLineChartData";
-
-// Dashboard components
-import Projects from "layouts/dashboard/components/Projects";
-import OrdersOverview from "layouts/dashboard/components/OrdersOverview";
-
 function Dashboard() {
-  const { sales, tasks } = reportsLineChartData;
+  const { userProfile } = useAuth();
+  const navigate = useNavigate(); // 👈 Se inicializa useNavigate
 
+  // Solo el admin necesita estos estados
+  const [userCount, setUserCount] = useState(0);
+  const [bookingCount, setBookingCount] = useState(0);
+  const [pendingFieldsCount, setPendingFieldsCount] = useState(0);
+
+  // 👇 ESTE ES EL NUEVO EFECTO DE REDIRECCIÓN
+  useEffect(() => {
+    // Si el perfil del usuario ya cargó y el rol es "cliente", lo redirigimos
+    if (userProfile && userProfile.role === "cliente") {
+      navigate("/canchas");
+    }
+  }, [userProfile, navigate]);
+
+  // Este efecto ahora solo se preocupa por las estadísticas del admin
+  useEffect(() => {
+    if (userProfile?.role === "admin") {
+      const unsubUsers = onSnapshot(query(collection(db, "users")), (snap) =>
+        setUserCount(snap.size)
+      );
+      const unsubBookings = onSnapshot(query(collection(db, "reservas")), (snap) =>
+        setBookingCount(snap.size)
+      );
+      const unsubPending = onSnapshot(
+        query(collection(db, "canchas"), where("status", "==", "pending")),
+        (snap) => setPendingFieldsCount(snap.size)
+      );
+
+      return () => {
+        unsubUsers();
+        unsubBookings();
+        unsubPending();
+      };
+    }
+  }, [userProfile]);
+
+  // Si aún no carga el perfil o si es un cliente (antes de redirigir), no mostramos nada para evitar un parpadeo
+  if (!userProfile || userProfile.role === "cliente") {
+    return (
+      <DashboardLayout>
+        <DashboardNavbar />
+        {/* Puedes poner un spinner de carga aquí si lo deseas */}
+      </DashboardLayout>
+    );
+  }
+
+  // El dashboard ahora solo renderiza esto para el admin y asociado
   return (
     <DashboardLayout>
       <DashboardNavbar />
       <MDBox py={3}>
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={6} lg={3}>
+        <Grid container spacing={3} mb={3}>
+          <Grid item xs={12} sm={6} lg={3}>
             <MDBox mb={1.5}>
               <ComplexStatisticsCard
-                color="dark"
-                icon="weekend"
-                title="Bookings"
-                count={281}
-                percentage={{
-                  color: "success",
-                  amount: "+55%",
-                  label: "than lask week",
-                }}
+                color="warning"
+                icon="pending_actions"
+                title="Canchas Pendientes"
+                count={pendingFieldsCount}
+                sx={{ textAlign: "right" }}
               />
             </MDBox>
           </Grid>
-          <Grid item xs={12} md={6} lg={3}>
+          <Grid item xs={12} sm={6} lg={3}>
             <MDBox mb={1.5}>
               <ComplexStatisticsCard
-                icon="leaderboard"
-                title="Today's Users"
-                count="2,300"
-                percentage={{
-                  color: "success",
-                  amount: "+3%",
-                  label: "than last month",
-                }}
+                icon="people"
+                title="Usuarios Registrados"
+                count={userCount}
+                sx={{ textAlign: "right" }}
               />
             </MDBox>
           </Grid>
-          <Grid item xs={12} md={6} lg={3}>
+          <Grid item xs={12} sm={6} lg={3}>
             <MDBox mb={1.5}>
               <ComplexStatisticsCard
                 color="success"
-                icon="store"
-                title="Revenue"
-                count="34k"
-                percentage={{
-                  color: "success",
-                  amount: "+1%",
-                  label: "than yesterday",
-                }}
-              />
-            </MDBox>
-          </Grid>
-          <Grid item xs={12} md={6} lg={3}>
-            <MDBox mb={1.5}>
-              <ComplexStatisticsCard
-                color="primary"
-                icon="person_add"
-                title="Followers"
-                count="+91"
-                percentage={{
-                  color: "success",
-                  amount: "",
-                  label: "Just updated",
-                }}
+                icon="event_available"
+                title="Reservas Totales"
+                count={bookingCount}
+                sx={{ textAlign: "right" }}
               />
             </MDBox>
           </Grid>
         </Grid>
-        <MDBox mt={4.5}>
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6} lg={4}>
-              <MDBox mb={3}>
-                <ReportsBarChart
-                  color="info"
-                  title="website views"
-                  description="Last Campaign Performance"
-                  date="campaign sent 2 days ago"
-                  chart={reportsBarChartData}
-                />
-              </MDBox>
-            </Grid>
-            <Grid item xs={12} md={6} lg={4}>
-              <MDBox mb={3}>
-                <ReportsLineChart
-                  color="success"
-                  title="daily sales"
-                  description={
-                    <>
-                      (<strong>+15%</strong>) increase in today sales.
-                    </>
-                  }
-                  date="updated 4 min ago"
-                  chart={sales}
-                />
-              </MDBox>
-            </Grid>
-            <Grid item xs={12} md={6} lg={4}>
-              <MDBox mb={3}>
-                <ReportsLineChart
-                  color="dark"
-                  title="completed tasks"
-                  description="Last Campaign Performance"
-                  date="just updated"
-                  chart={tasks}
-                />
-              </MDBox>
-            </Grid>
-          </Grid>
-        </MDBox>
-        <MDBox>
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6} lg={8}>
-              <Projects />
-            </Grid>
-            <Grid item xs={12} md={6} lg={4}>
-              <OrdersOverview />
-            </Grid>
-          </Grid>
-        </MDBox>
+        {/* Aquí en el futuro irá el contenido específico para el admin/asociado */}
       </MDBox>
       <Footer />
     </DashboardLayout>

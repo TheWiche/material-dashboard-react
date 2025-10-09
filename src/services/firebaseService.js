@@ -1,11 +1,11 @@
 // src/services/firebaseService.js
 
 import { initializeApp } from "firebase/app";
-import { 
-  getAuth, 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut 
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
 } from "firebase/auth";
 import { getFirestore, doc, setDoc, serverTimestamp } from "firebase/firestore";
 
@@ -17,7 +17,7 @@ const firebaseConfig = {
   storageBucket: "goaltime-68101.firebasestorage.app",
   messagingSenderId: "208497272561",
   appId: "1:208497272561:web:38bc4f42784da077dbeb50",
-  measurementId: "G-66L288MXFS"
+  measurementId: "G-66L288MXFS",
 };
 
 // Inicializar servicios
@@ -45,7 +45,7 @@ export const registerUser = async (name, email, password) => {
       role: "cliente", // Rol por defecto al registrarse
       createdAt: serverTimestamp(),
     });
-    
+
     return user;
   } catch (error) {
     // Manejo de errores (ej. email ya en uso)
@@ -78,4 +78,4 @@ export const logoutUser = () => {
 };
 
 // Exportamos 'auth' por si lo necesitamos para otras cosas, como onAuthStateChanged
-export { auth };
+export { auth, db };
