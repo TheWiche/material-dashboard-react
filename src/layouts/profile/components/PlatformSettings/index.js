@@ -35,12 +35,12 @@ function PlatformSettings() {
     <Card sx={{ boxShadow: "none" }}>
       <MDBox p={2}>
         <MDTypography variant="h6" fontWeight="medium" textTransform="capitalize">
-          platform settings
+          configuración de la plataforma
         </MDTypography>
       </MDBox>
       <MDBox pt={1} pb={2} px={2} lineHeight={1.25}>
         <MDTypography variant="caption" fontWeight="bold" color="text" textTransform="uppercase">
-          account
+          cuenta
         </MDTypography>
         <MDBox display="flex" alignItems="center" mb={0.5} ml={-1.5}>
           <MDBox mt={0.5}>
@@ -48,7 +48,7 @@ function PlatformSettings() {
           </MDBox>
           <MDBox width="80%" ml={0.5}>
             <MDTypography variant="button" fontWeight="regular" color="text">
-              Email me when someone follows me
+              Enviarme un correo cuando alguien me siga
             </MDTypography>
           </MDBox>
         </MDBox>
@@ -58,7 +58,7 @@ function PlatformSettings() {
           </MDBox>
           <MDBox width="80%" ml={0.5}>
             <MDTypography variant="button" fontWeight="regular" color="text">
-              Email me when someone answers on my post
+              Enviarme un correo cuando alguien responda a mi publicación
             </MDTypography>
           </MDBox>
         </MDBox>
@@ -68,13 +68,13 @@ function PlatformSettings() {
           </MDBox>
           <MDBox width="80%" ml={0.5}>
             <MDTypography variant="button" fontWeight="regular" color="text">
-              Email me when someone mentions me
+              Enviarme un correo cuando alguien me mencione
             </MDTypography>
           </MDBox>
         </MDBox>
         <MDBox mt={3}>
           <MDTypography variant="caption" fontWeight="bold" color="text" textTransform="uppercase">
-            application
+            aplicación
           </MDTypography>
         </MDBox>
         <MDBox display="flex" alignItems="center" mb={0.5} ml={-1.5}>
@@ -83,7 +83,7 @@ function PlatformSettings() {
           </MDBox>
           <MDBox width="80%" ml={0.5}>
             <MDTypography variant="button" fontWeight="regular" color="text">
-              New launches and projects
+              Nuevos lanzamientos y proyectos
             </MDTypography>
           </MDBox>
         </MDBox>
@@ -93,7 +93,7 @@ function PlatformSettings() {
           </MDBox>
           <MDBox width="80%" ml={0.5}>
             <MDTypography variant="button" fontWeight="regular" color="text">
-              Monthly product updates
+              Actualizaciones mensuales de productos
             </MDTypography>
           </MDBox>
         </MDBox>
@@ -103,7 +103,7 @@ function PlatformSettings() {
           </MDBox>
           <MDBox width="80%" ml={0.5}>
             <MDTypography variant="button" fontWeight="regular" color="text">
-              Subscribe to newsletter
+              Suscribirse al boletín
             </MDTypography>
           </MDBox>
         </MDBox>

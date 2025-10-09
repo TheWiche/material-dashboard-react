@@ -44,20 +44,20 @@ function Cover() {
           textAlign="center"
         >
           <MDTypography variant="h3" fontWeight="medium" color="white" mt={1}>
-            Reset Password
+            Restablecer Contraseña
           </MDTypography>
           <MDTypography display="block" variant="button" color="white" my={1}>
-            You will receive an e-mail in maximum 60 seconds
+            Recibirás un correo electrónico en un máximo de 60 segundos
           </MDTypography>
         </MDBox>
         <MDBox pt={4} pb={3} px={3}>
           <MDBox component="form" role="form">
             <MDBox mb={4}>
-              <MDInput type="email" label="Email" variant="standard" fullWidth />
+              <MDInput type="email" label="Correo Electrónico" variant="standard" fullWidth />
             </MDBox>
             <MDBox mt={6} mb={1}>
               <MDButton variant="gradient" color="info" fullWidth>
-                reset
+                restablecer
               </MDButton>
             </MDBox>
           </MDBox>
