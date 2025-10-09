@@ -1,10 +1,10 @@
 /**
 =========================================================
-* Material Dashboard 2 React - v2.2.0
+* GoalTime App - v2.2.0
 =========================================================
 */
 
-// Material Dashboard 2 React layouts
+// GoalTime App layouts
 import Dashboard from "layouts/dashboard";
 import Tables from "layouts/tables";
 import Billing from "layouts/billing";

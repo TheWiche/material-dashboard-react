@@ -1,9 +1,9 @@
 /**
 =========================================================
-* Material Dashboard 2 React - v1.0.0
+* GoalTime App - v1.0.0
 =========================================================
 
-* Product Page: https://www.creative-tim.com/product/soft-ui-dashboard-pro-react
+* Product Page: https://www.goaltime.site/product/soft-ui-dashboard-pro-react
 * Copyright 2021 Creative Tim (https://www.creative-tim.com)
 
 Coded by www.creative-tim.com
@@ -21,7 +21,7 @@ import PropTypes from "prop-types";
 // Custom styles for MDButton
 import MDButtonRoot from "components/MDButton/MDButtonRoot";
 
-// Material Dashboard 2 React contexts
+// GoalTime App contexts
 import { useMaterialUIController } from "context";
 
 const MDButton = forwardRef(

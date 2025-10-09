@@ -1,9 +1,9 @@
 /**
 =========================================================
-* Material Dashboard 2 React - v2.1.0
+* GoalTime App - v2.1.0
 =========================================================
 
-* Product Page: https://www.creative-tim.com/product/nextjs-material-dashboard-pro
+* Product Page: https://www.goaltime.site/product/nextjs-material-dashboard-pro
 * Copyright 2023 Creative Tim (https://www.creative-tim.com)
 
 Coded by www.creative-tim.com

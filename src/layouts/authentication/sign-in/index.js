@@ -1,6 +1,6 @@
 /**
 =========================================================
-* Material Dashboard 2 React - v2.2.0
+* GoalTime App - v2.2.0
 =========================================================
 */
 
@@ -18,18 +18,19 @@ import FacebookIcon from "@mui/icons-material/Facebook";
 import GitHubIcon from "@mui/icons-material/GitHub";
 import GoogleIcon from "@mui/icons-material/Google";
 
-// Material Dashboard 2 React components
+// GoalTime App components
 import MDBox from "components/MDBox";
 import MDTypography from "components/MDTypography";
 import MDInput from "components/MDInput";
 import MDButton from "components/MDButton";
 import MDSnackbar from "components/MDSnackbar"; // 👈 1. Importamos el componente de notificación
+import { useAuth } from "context/AuthContext";
 
 // Authentication layout components
 import BasicLayout from "layouts/authentication/components/BasicLayout";
 
 // Images
-import bgImage from "assets/images/bg-sign-in-basic.jpeg";
+import bgImage from "assets/images/bg-sign-in.png"; //bg-sign-in-basic.jpeg
 
 // Importamos nuestra función de login desde el servicio
 import { loginUser } from "services/firebaseService";
@@ -56,6 +57,7 @@ function Basic() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
+  const { setIsActionLoading } = useAuth();
 
   // 👈 2. Estados para manejar la notificación
   const [errorSB, setErrorSB] = useState(false);
@@ -66,10 +68,9 @@ function Basic() {
   const handleLogin = async (event) => {
     event.preventDefault();
     try {
-      await loginUser(email, password);
-      navigate("/dashboard");
+      // 👇 Le pasamos la función 'setIsActionLoading' como argumento
+      await loginUser(email, password, navigate, setIsActionLoading);
     } catch (error) {
-      // 👈 3. Reemplazamos el alert con la lógica de la notificación
       setErrorMessage(getFriendlyErrorMessage(error.code));
       openErrorSB();
     }

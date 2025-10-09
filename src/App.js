@@ -29,9 +29,10 @@ export default function App() {
     darkMode,
   } = controller;
   const [onMouseEnter, setOnMouseEnter] = useState(false);
-  const { pathname } = useLocation();
+  const { pathname } = useLocation(); // pathname nos da la ruta actual (ej. "/canchas")
   const { userProfile } = useAuth();
 
+  // ... (las funciones handleOnMouseEnter, handleOnMouseLeave, etc. no cambian)
   const handleOnMouseEnter = () => {
     if (miniSidenav && !onMouseEnter) {
       setMiniSidenav(dispatch, false);
@@ -57,28 +58,16 @@ export default function App() {
     document.scrollingElement.scrollTop = 0;
   }, [pathname]);
 
-  // 👇 LÓGICA DE FILTRADO MEJORADA Y COMPLETADA
   const filteredRoutes = useMemo(() => {
-    // Si no hay usuario, muestra ÚNICAMENTE las páginas de autenticación.
     if (!userProfile) {
       return routes.filter((route) => route.key === "sign-in" || route.key === "sign-up");
     }
-
-    // Si hay un usuario logueado, empieza a filtrar.
     let userRoutes = routes.filter(
-      (route) =>
-        // Oculta estas rutas para CUALQUIER usuario logueado
-        route.key !== "sign-in" && route.key !== "sign-up" && route.key !== "rtl"
+      (route) => route.key !== "sign-in" && route.key !== "sign-up" && route.key !== "rtl"
     );
-
-    // Ahora, aplica filtros específicos por rol.
     if (userProfile.role === "cliente") {
-      // Si es cliente, oculta también el dashboard.
       userRoutes = userRoutes.filter((route) => route.key !== "dashboard");
     }
-
-    // Para el admin, no se aplican más filtros y ve el resto.
-    // Para el asociado, podríamos añadir más filtros en el futuro.
     return userRoutes;
   }, [userProfile]);
 
@@ -120,13 +109,15 @@ export default function App() {
   return (
     <ThemeProvider theme={darkMode ? themeDark : theme}>
       <CssBaseline />
-      {layout === "dashboard" && (
+
+      {/* 👇 LA CORRECCIÓN CLAVE ESTÁ AQUÍ 👇 */}
+      {layout === "dashboard" && !pathname.includes("/authentication") && (
         <>
           <Sidenav
             color={sidenavColor}
             brand={(transparentSidenav && !darkMode) || whiteSidenav ? brandDark : brandWhite}
             brandName="GoalTime"
-            routes={filteredRoutes} // Pasamos las rutas YA FILTRADAS
+            routes={filteredRoutes}
             onMouseEnter={handleOnMouseEnter}
             onMouseLeave={handleOnMouseLeave}
           />
@@ -134,6 +125,7 @@ export default function App() {
           {configsButton}
         </>
       )}
+
       {layout === "vr" && <Configurator />}
       <Routes>
         {getRoutes(filteredRoutes)}

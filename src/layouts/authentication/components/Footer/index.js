@@ -1,9 +1,9 @@
 /**
 =========================================================
-* Material Dashboard 2 React - v2.2.0
+* GoalTime App - v2.2.0
 =========================================================
 
-* Product Page: https://www.creative-tim.com/product/material-dashboard-react
+* Product Page: https://www.goaltime.site/product/material-dashboard-react
 * Copyright 2023 Creative Tim (https://www.creative-tim.com)
 
 Coded by www.creative-tim.com
@@ -21,11 +21,11 @@ import Container from "@mui/material/Container";
 import Link from "@mui/material/Link";
 import Icon from "@mui/material/Icon";
 
-// Material Dashboard 2 React components
+// GoalTime App components
 import MDBox from "components/MDBox";
 import MDTypography from "components/MDTypography";
 
-// Material Dashboard 2 React base styles
+// GoalTime App base styles
 import typography from "assets/theme/base/typography";
 
 function Footer({ light }) {
@@ -57,7 +57,7 @@ function Footer({ light }) {
               </Icon>
             </MDBox>
             por
-            <Link href="https://www.creative-tim.com/" target="_blank">
+            <Link href="https://www.goaltime.site/" target="_blank">
               <MDTypography variant="button" fontWeight="medium" color={light ? "white" : "dark"}>
                 &nbsp;Creative Tim&nbsp;
               </MDTypography>
@@ -82,7 +82,7 @@ function Footer({ light }) {
             })}
           >
             <MDBox component="li" pr={2} lineHeight={1}>
-              <Link href="https://www.creative-tim.com/" target="_blank">
+              <Link href="https://www.goaltime.site/" target="_blank">
                 <MDTypography
                   variant="button"
                   fontWeight="regular"
@@ -93,7 +93,7 @@ function Footer({ light }) {
               </Link>
             </MDBox>
             <MDBox component="li" px={2} lineHeight={1}>
-              <Link href="https://www.creative-tim.com/presentation" target="_blank">
+              <Link href="https://www.goaltime.site/presentation" target="_blank">
                 <MDTypography
                   variant="button"
                   fontWeight="regular"
@@ -104,7 +104,7 @@ function Footer({ light }) {
               </Link>
             </MDBox>
             <MDBox component="li" px={2} lineHeight={1}>
-              <Link href="https://www.creative-tim.com/blog" target="_blank">
+              <Link href="https://www.goaltime.site/blog" target="_blank">
                 <MDTypography
                   variant="button"
                   fontWeight="regular"
@@ -115,7 +115,7 @@ function Footer({ light }) {
               </Link>
             </MDBox>
             <MDBox component="li" pl={2} lineHeight={1}>
-              <Link href="https://www.creative-tim.com/license" target="_blank">
+              <Link href="https://www.goaltime.site/license" target="_blank">
                 <MDTypography
                   variant="button"
                   fontWeight="regular"

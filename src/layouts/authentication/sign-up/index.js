@@ -1,6 +1,6 @@
 /**
 =========================================================
-* Material Dashboard 2 React - v2.2.0
+* GoalTime App - v2.2.0
 =========================================================
 */
 
@@ -11,18 +11,19 @@ import { Link, useNavigate } from "react-router-dom";
 import Card from "@mui/material/Card";
 import Checkbox from "@mui/material/Checkbox";
 
-// Material Dashboard 2 React components
+// GoalTime App components
 import MDBox from "components/MDBox";
 import MDTypography from "components/MDTypography";
 import MDInput from "components/MDInput";
 import MDButton from "components/MDButton";
 import MDSnackbar from "components/MDSnackbar"; // 👈 1. Importamos el componente de notificación
+import { useAuth } from "context/AuthContext";
 
 // Authentication layout components
 import CoverLayout from "layouts/authentication/components/CoverLayout";
 
 // Images
-import bgImage from "assets/images/bg-sign-up-cover.jpeg";
+import bgImage from "assets/images/bg-sign-up-cover.png"; //bg-sign-up-cover.jpeg
 
 // Importamos nuestra función de registro desde el servicio
 import { registerUser } from "services/firebaseService";
@@ -46,6 +47,7 @@ function Cover() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
+  const { setIsActionLoading } = useAuth();
 
   // 👈 2. Estados para manejar la notificación
   const [errorSB, setErrorSB] = useState(false);
@@ -56,10 +58,9 @@ function Cover() {
   const handleRegister = async (event) => {
     event.preventDefault();
     try {
-      await registerUser(name, email, password);
-      navigate("/dashboard");
+      // 👇 Le pasamos la función 'setIsActionLoading' como argumento
+      await registerUser(name, email, password, navigate, setIsActionLoading);
     } catch (error) {
-      // 👈 3. Reemplazamos el alert con la lógica de la notificación
       setErrorMessage(getFriendlyErrorMessage(error.code));
       openErrorSB();
     }

@@ -1,6 +1,6 @@
 /**
 =========================================================
-* Material Dashboard 2 React - v2.2.0
+* GoalTime App - v2.2.0
 =========================================================
 */
 
@@ -21,14 +21,14 @@ import MenuItem from "@mui/material/MenuItem"; // 👈 2. Se importa MenuItem
 import Icon from "@mui/material/Icon";
 import { Divider } from "@mui/material"; // Para el separador
 
-// Material Dashboard 2 React components
+// GoalTime App components
 import MDBox from "components/MDBox";
 import MDInput from "components/MDInput";
 import MDBadge from "components/MDBadge";
 import MDTypography from "components/MDTypography"; // 👈 3. Se importa MDTypography
 import { useAuth } from "context/AuthContext"; // Para obtener los datos del usuario
 
-// Material Dashboard 2 React example components
+// GoalTime App example components
 import Breadcrumbs from "examples/Breadcrumbs";
 import NotificationItem from "examples/Items/NotificationItem";
 
@@ -41,7 +41,7 @@ import {
   navbarMobileMenu,
 } from "examples/Navbars/DashboardNavbar/styles";
 
-// Material Dashboard 2 React context
+// GoalTime App context
 import {
   useMaterialUIController,
   setTransparentNavbar,
