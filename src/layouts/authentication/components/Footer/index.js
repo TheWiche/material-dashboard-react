@@ -50,19 +50,19 @@ function Footer({ light }) {
             color={light ? "white" : "text"}
             fontSize={size.sm}
           >
-            &copy; {new Date().getFullYear()}, made with
+            &copy; {new Date().getFullYear()}, hecho con
             <MDBox fontSize={size.md} color={light ? "white" : "dark"} mb={-0.5} mx={0.25}>
               <Icon color="inherit" fontSize="inherit">
                 favorite
               </Icon>
             </MDBox>
-            by
+            por
             <Link href="https://www.creative-tim.com/" target="_blank">
               <MDTypography variant="button" fontWeight="medium" color={light ? "white" : "dark"}>
                 &nbsp;Creative Tim&nbsp;
               </MDTypography>
             </Link>
-            for a better web.
+            por una web mejor.
           </MDBox>
           <MDBox
             component="ul"
@@ -99,7 +99,7 @@ function Footer({ light }) {
                   fontWeight="regular"
                   color={light ? "white" : "dark"}
                 >
-                  About Us
+                  Sobre Nosotros
                 </MDTypography>
               </Link>
             </MDBox>
@@ -121,7 +121,7 @@ function Footer({ light }) {
                   fontWeight="regular"
                   color={light ? "white" : "dark"}
                 >
-                  License
+                  Licencia
                 </MDTypography>
               </Link>
             </MDBox>
