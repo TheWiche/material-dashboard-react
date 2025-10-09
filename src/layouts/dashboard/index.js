@@ -1,18 +1,13 @@
 // src/layouts/dashboard/index.js
 
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom"; // 👈 Se importa useNavigate
-import { collection, query, onSnapshot, where } from "firebase/firestore";
+import { useNavigate } from "react-router-dom";
+import { collection, query, where, onSnapshot } from "firebase/firestore"; // 'where' ya está importado
 import { db } from "services/firebaseService";
 import { useAuth } from "context/AuthContext";
 
-// @mui material components
 import Grid from "@mui/material/Grid";
-
-// Material Dashboard 2 React components
 import MDBox from "components/MDBox";
-
-// Material Dashboard 2 React example components
 import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
 import DashboardNavbar from "examples/Navbars/DashboardNavbar";
 import Footer from "examples/Footer";
@@ -20,24 +15,23 @@ import ComplexStatisticsCard from "examples/Cards/StatisticsCards/ComplexStatist
 
 function Dashboard() {
   const { userProfile } = useAuth();
-  const navigate = useNavigate(); // 👈 Se inicializa useNavigate
+  const navigate = useNavigate();
 
-  // Solo el admin necesita estos estados
+  // Estados para estadísticas de Admin
   const [userCount, setUserCount] = useState(0);
   const [bookingCount, setBookingCount] = useState(0);
-  const [pendingFieldsCount, setPendingFieldsCount] = useState(0);
+  const [totalPendingCount, setTotalPendingCount] = useState(0);
 
-  // 👇 ESTE ES EL NUEVO EFECTO DE REDIRECCIÓN
-  useEffect(() => {
-    // Si el perfil del usuario ya cargó y el rol es "cliente", lo redirigimos
-    if (userProfile && userProfile.role === "cliente") {
-      navigate("/canchas");
-    }
-  }, [userProfile, navigate]);
+  // 👇 1. Se añaden estados para las estadísticas del Asociado
+  const [myFieldsCount, setMyFieldsCount] = useState(0);
+  const [myPendingCount, setMyPendingCount] = useState(0);
 
-  // Este efecto ahora solo se preocupa por las estadísticas del admin
+  // 👇 2. El useEffect ahora se adapta al rol de 'asociado' también
   useEffect(() => {
-    if (userProfile?.role === "admin") {
+    if (!userProfile) return; // Si no hay perfil, no hagas nada
+
+    // Lógica para el ADMIN
+    if (userProfile.role === "admin") {
       const unsubUsers = onSnapshot(query(collection(db, "users")), (snap) =>
         setUserCount(snap.size)
       );
@@ -46,67 +40,119 @@ function Dashboard() {
       );
       const unsubPending = onSnapshot(
         query(collection(db, "canchas"), where("status", "==", "pending")),
-        (snap) => setPendingFieldsCount(snap.size)
+        (snap) => setTotalPendingCount(snap.size)
       );
-
       return () => {
         unsubUsers();
         unsubBookings();
         unsubPending();
       };
     }
+
+    // Lógica para el ASOCIADO
+    if (userProfile.role === "asociado") {
+      // Contar el total de canchas del asociado
+      const myFieldsQuery = query(
+        collection(db, "canchas"),
+        where("ownerId", "==", userProfile.uid)
+      );
+      const unsubMyFields = onSnapshot(myFieldsQuery, (snap) => setMyFieldsCount(snap.size));
+
+      // Contar las canchas pendientes del asociado
+      const myPendingQuery = query(
+        collection(db, "canchas"),
+        where("ownerId", "==", userProfile.uid),
+        where("status", "==", "pending")
+      );
+      const unsubMyPending = onSnapshot(myPendingQuery, (snap) => setMyPendingCount(snap.size));
+
+      return () => {
+        unsubMyFields();
+        unsubMyPending();
+      };
+    }
   }, [userProfile]);
 
-  // Si aún no carga el perfil o si es un cliente (antes de redirigir), no mostramos nada para evitar un parpadeo
   if (!userProfile || userProfile.role === "cliente") {
     return (
       <DashboardLayout>
         <DashboardNavbar />
-        {/* Puedes poner un spinner de carga aquí si lo deseas */}
       </DashboardLayout>
     );
   }
 
-  // El dashboard ahora solo renderiza esto para el admin y asociado
   return (
     <DashboardLayout>
       <DashboardNavbar />
       <MDBox py={3}>
+        {/* 👇 3. Se renderizan las tarjetas según el rol del usuario */}
         <Grid container spacing={3} mb={3}>
-          <Grid item xs={12} sm={6} lg={3}>
-            <MDBox mb={1.5}>
-              <ComplexStatisticsCard
-                color="warning"
-                icon="pending_actions"
-                title="Canchas Pendientes"
-                count={pendingFieldsCount}
-                sx={{ textAlign: "right" }}
-              />
-            </MDBox>
-          </Grid>
-          <Grid item xs={12} sm={6} lg={3}>
-            <MDBox mb={1.5}>
-              <ComplexStatisticsCard
-                icon="people"
-                title="Usuarios Registrados"
-                count={userCount}
-                sx={{ textAlign: "right" }}
-              />
-            </MDBox>
-          </Grid>
-          <Grid item xs={12} sm={6} lg={3}>
-            <MDBox mb={1.5}>
-              <ComplexStatisticsCard
-                color="success"
-                icon="event_available"
-                title="Reservas Totales"
-                count={bookingCount}
-                sx={{ textAlign: "right" }}
-              />
-            </MDBox>
-          </Grid>
+          {userProfile.role === "admin" && (
+            <>
+              <Grid item xs={12} sm={6} lg={3}>
+                <MDBox mb={1.5}>
+                  <ComplexStatisticsCard
+                    color="warning"
+                    icon="pending_actions"
+                    title="Canchas Pendientes"
+                    count={totalPendingCount}
+                    sx={{ textAlign: "right" }}
+                  />
+                </MDBox>
+              </Grid>
+              <Grid item xs={12} sm={6} lg={3}>
+                <MDBox mb={1.5}>
+                  <ComplexStatisticsCard
+                    icon="people"
+                    title="Usuarios Registrados"
+                    count={userCount}
+                    sx={{ textAlign: "right" }}
+                  />
+                </MDBox>
+              </Grid>
+              <Grid item xs={12} sm={6} lg={3}>
+                <MDBox mb={1.5}>
+                  <ComplexStatisticsCard
+                    color="success"
+                    icon="event_available"
+                    title="Reservas Totales"
+                    count={bookingCount}
+                    sx={{ textAlign: "right" }}
+                  />
+                </MDBox>
+              </Grid>
+            </>
+          )}
+
+          {userProfile.role === "asociado" && (
+            <>
+              <Grid item xs={12} sm={6} lg={3}>
+                <MDBox mb={1.5}>
+                  <ComplexStatisticsCard
+                    color="info"
+                    icon="sports_soccer"
+                    title="Mis Canchas Registradas"
+                    count={myFieldsCount}
+                    sx={{ textAlign: "right" }}
+                  />
+                </MDBox>
+              </Grid>
+              <Grid item xs={12} sm={6} lg={3}>
+                <MDBox mb={1.5}>
+                  <ComplexStatisticsCard
+                    color="warning"
+                    icon="pending_actions"
+                    title="Mis Canchas Pendientes"
+                    count={myPendingCount}
+                    sx={{ textAlign: "right" }}
+                  />
+                </MDBox>
+              </Grid>
+              {/* Aquí podríamos añadir "Reservas en mis canchas" en el futuro */}
+            </>
+          )}
         </Grid>
-        {/* Aquí en el futuro irá el contenido específico para el admin/asociado */}
+        {/* Aquí en el futuro irá el contenido específico para el rol */}
       </MDBox>
       <Footer />
     </DashboardLayout>

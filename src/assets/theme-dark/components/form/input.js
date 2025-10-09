@@ -1,9 +1,9 @@
 /**
 =========================================================
-* Material Dashboard 2 React - v2.2.0
+* GoalTime App - v2.2.0
 =========================================================
 
-* Product Page: https://www.creative-tim.com/product/material-dashboard-react
+* Product Page: https://www.goaltime.site/product/material-dashboard-react
 * Copyright 2023 Creative Tim (https://www.creative-tim.com)
 
 Coded by www.creative-tim.com
@@ -13,12 +13,12 @@ Coded by www.creative-tim.com
 * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 */
 
-// Material Dashboard 2 React Base Styles
+// GoalTime App Base Styles
 import colors from "assets/theme-dark/base/colors";
 import typography from "assets/theme-dark/base/typography";
 import borders from "assets/theme-dark/base/borders";
 
-// Material Dashboard 2 React Helper Functions
+// GoalTime App Helper Functions
 import rgba from "assets/theme-dark/functions/rgba";
 
 const { info, inputBorderColor, dark, grey, white } = colors;

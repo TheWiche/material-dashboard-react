@@ -1,9 +1,9 @@
 /**
 =========================================================
-* Material Dashboard 2 React - v2.2.0
+* GoalTime App - v2.2.0
 =========================================================
 
-* Product Page: https://www.creative-tim.com/product/material-dashboard-react
+* Product Page: https://www.goaltime.site/product/material-dashboard-react
 * Copyright 2023 Creative Tim (https://www.creative-tim.com)
 
 Coded by www.creative-tim.com
@@ -14,15 +14,15 @@ Coded by www.creative-tim.com
 */
 
 /**
- * The base box-shadow styles for the Material Dashboard 2 React.
+ * The base box-shadow styles for the GoalTime App.
  * You can add new box-shadow using this file.
- * You can customized the box-shadow for the entire Material Dashboard 2 React using thie file.
+ * You can customized the box-shadow for the entire GoalTime App using thie file.
  */
 
-// Material Dashboard 2 React Base Styles
+// GoalTime App Base Styles
 import colors from "assets/theme-dark/base/colors";
 
-// Material Dashboard 2 React Helper Functions
+// GoalTime App Helper Functions
 import boxShadow from "assets/theme-dark/functions/boxShadow";
 
 const { black, dark, tabs, coloredShadows } = colors;

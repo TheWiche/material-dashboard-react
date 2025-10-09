@@ -1,9 +1,9 @@
 /**
 =========================================================
-* Material Dashboard 2 React - v2.2.0
+* GoalTime App - v2.2.0
 =========================================================
 
-* Product Page: https://www.creative-tim.com/product/material-dashboard-react
+* Product Page: https://www.goaltime.site/product/material-dashboard-react
 * Copyright 2023 Creative Tim (https://www.creative-tim.com)
 
 Coded by www.creative-tim.com
@@ -23,14 +23,14 @@ import Icon from "@mui/material/Icon";
 import Divider from "@mui/material/Divider";
 import Fade from "@mui/material/Fade";
 
-// Material Dashboard 2 React components
+// GoalTime App components
 import MDBox from "components/MDBox";
 import MDTypography from "components/MDTypography";
 
 // Custom styles for the MDSnackbar
 import MDSnackbarIconRoot from "components/MDSnackbar/MDSnackbarIconRoot";
 
-// Material Dashboard 2 React context
+// GoalTime App context
 import { useMaterialUIController } from "context";
 
 function MDSnackbar({ color, icon, title, dateTime, content, close, bgWhite, ...rest }) {

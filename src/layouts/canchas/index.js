@@ -14,12 +14,12 @@ import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import MDBadge from "components/MDBadge";
 
-// Material Dashboard 2 React components
+// GoalTime App components
 import MDBox from "components/MDBox";
 import MDTypography from "components/MDTypography";
 import MDButton from "components/MDButton";
 
-// Material Dashboard 2 React example components
+// GoalTime App example components
 import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
 import DashboardNavbar from "examples/Navbars/DashboardNavbar";
 import Footer from "examples/Footer";
