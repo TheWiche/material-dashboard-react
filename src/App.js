@@ -72,16 +72,20 @@ export default function App() {
 
     // Si hay un usuario logueado, empieza con todas las rutas...
     let userRoutes = routes.filter(
-      (route) =>
-        // ...y oculta las que no necesita ver en el menú lateral.
-        route.key !== "sign-in" && route.key !== "sign-up" && route.key !== "rtl" // 'rtl' es de la plantilla, la quitamos
+      (route) => route.key !== "sign-in" && route.key !== "sign-up" && route.key !== "rtl"
     );
 
-    // Si el rol es 'cliente', oculta también el dashboard.
     if (userProfile.role === "cliente") {
-      userRoutes = userRoutes.filter((route) => route.key !== "dashboard");
+      // El cliente no ve el dashboard ni la gestión de usuarios
+      userRoutes = userRoutes.filter(
+        (route) => route.key !== "dashboard" && route.key !== "admin-users"
+      );
+    } else if (userProfile.role === "asociado") {
+      // Un asociado (por ahora) tampoco ve la gestión de usuarios
+      userRoutes = userRoutes.filter((route) => route.key !== "admin-users");
     }
 
+    // El admin ve todo lo que no se filtró antes.
     return userRoutes;
   }, [userProfile]);
 
