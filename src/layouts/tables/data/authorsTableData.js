@@ -1,19 +1,7 @@
+//src/layouts/tables/data/authorsTableData.js
+
 /* eslint-disable react/prop-types */
 /* eslint-disable react/function-component-definition */
-/**
-=========================================================
-* GoalTime App - v2.2.0
-=========================================================
-
-* Product Page: https://www.goaltime.site/product/material-dashboard-react
-* Copyright 2023 Creative Tim (https://www.creative-tim.com)
-
-Coded by www.creative-tim.com
-
- =========================================================
-
-* The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-*/
 
 // GoalTime App components
 import MDBox from "components/MDBox";

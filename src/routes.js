@@ -1,6 +1,7 @@
 // src/routes.js
 
 import Dashboard from "layouts/dashboard";
+import AdminUsers from "layouts/admin-users";
 import Canchas from "layouts/canchas";
 import Tables from "layouts/tables";
 import Billing from "layouts/billing";
@@ -29,6 +30,18 @@ const routes = [
     component: (
       <ProtectedRoute>
         <Dashboard />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    type: "collapse",
+    name: "Usuarios",
+    key: "admin-users",
+    icon: <Icon fontSize="small">people</Icon>,
+    route: "/admin/users",
+    component: (
+      <ProtectedRoute>
+        <AdminUsers />
       </ProtectedRoute>
     ),
   },
