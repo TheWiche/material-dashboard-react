@@ -1,34 +1,31 @@
-/**
-=========================================================
-* GoalTime App - v2.2.0
-=========================================================
-*/
+// src/routes.js
 
-// GoalTime App layouts
 import Dashboard from "layouts/dashboard";
+import Canchas from "layouts/canchas";
 import Tables from "layouts/tables";
 import Billing from "layouts/billing";
 import Notifications from "layouts/notifications";
 import Profile from "layouts/profile";
 import SignIn from "layouts/authentication/sign-in";
 import SignUp from "layouts/authentication/sign-up";
-import Canchas from "layouts/canchas";
+import AboutUs from "layouts/about-us";
+import Blog from "layouts/blog";
+import License from "layouts/license";
+// Aquí irá la importación de BecomeAssociate en el futuro
 
-// 👈 Se importan los componentes de protección de rutas
 import GuestRoute from "components/GuestRoute";
 import ProtectedRoute from "components/ProtectedRoute";
 
-// @mui icons
 import Icon from "@mui/material/Icon";
 
 const routes = [
+  // --- Rutas Protegidas (Solo para usuarios logueados) ---
   {
     type: "collapse",
     name: "Dashboard",
     key: "dashboard",
     icon: <Icon fontSize="small">dashboard</Icon>,
     route: "/dashboard",
-    // 👈 Protegido: Solo para usuarios logueados
     component: (
       <ProtectedRoute>
         <Dashboard />
@@ -53,7 +50,6 @@ const routes = [
     key: "tables",
     icon: <Icon fontSize="small">table_view</Icon>,
     route: "/tables",
-    // 👈 Protegido: Solo para usuarios logueados
     component: (
       <ProtectedRoute>
         <Tables />
@@ -66,7 +62,6 @@ const routes = [
     key: "billing",
     icon: <Icon fontSize="small">receipt_long</Icon>,
     route: "/billing",
-    // 👈 Protegido: Solo para usuarios logueados
     component: (
       <ProtectedRoute>
         <Billing />
@@ -79,7 +74,6 @@ const routes = [
     key: "notifications",
     icon: <Icon fontSize="small">notifications</Icon>,
     route: "/notifications",
-    // 👈 Protegido: Solo para usuarios logueados
     component: (
       <ProtectedRoute>
         <Notifications />
@@ -87,25 +81,24 @@ const routes = [
     ),
   },
   {
-    type: "collapse",
     name: "Profile",
     key: "profile",
     icon: <Icon fontSize="small">person</Icon>,
     route: "/profile",
-    // 👈 Protegido: Solo para usuarios logueados
     component: (
       <ProtectedRoute>
         <Profile />
       </ProtectedRoute>
     ),
   },
+
+  // --- Rutas de Invitado (Solo para usuarios NO logueados) ---
   {
     type: "collapse",
     name: "Sign In",
     key: "sign-in",
     icon: <Icon fontSize="small">login</Icon>,
     route: "/authentication/sign-in",
-    // 👈 Protegido: Solo para usuarios NO logueados (invitados)
     component: (
       <GuestRoute>
         <SignIn />
@@ -118,13 +111,34 @@ const routes = [
     key: "sign-up",
     icon: <Icon fontSize="small">assignment</Icon>,
     route: "/authentication/sign-up",
-    // 👈 Protegido: Solo para usuarios NO logueados (invitados)
     component: (
       <GuestRoute>
         <SignUp />
       </GuestRoute>
     ),
   },
+
+  // --- Rutas Públicas (Visibles para TODOS, pero no en el menú) ---
+  {
+    key: "about-us",
+    route: "/sobre-nosotros",
+    component: <AboutUs />, // 👈 SIN PROTECCIÓN
+  },
+  {
+    key: "blog",
+    route: "/blog",
+    component: <Blog />, // 👈 SIN PROTECCIÓN
+  },
+  {
+    key: "license",
+    route: "/licencia",
+    component: <License />, // 👈 SIN PROTECCIÓN
+  },
+  // {
+  //   key: "become-associate",
+  //   route: "/become-associate",
+  //   component: <BecomeAssociate />, // 👈 SIN PROTECCIÓN
+  // },
 ];
 
 export default routes;

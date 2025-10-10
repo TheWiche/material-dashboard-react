@@ -29,10 +29,10 @@ export default function App() {
     darkMode,
   } = controller;
   const [onMouseEnter, setOnMouseEnter] = useState(false);
-  const { pathname } = useLocation(); // pathname nos da la ruta actual (ej. "/canchas")
+  const { pathname } = useLocation();
   const { userProfile } = useAuth();
 
-  // ... (las funciones handleOnMouseEnter, handleOnMouseLeave, etc. no cambian)
+  // ... (funciones handle... no cambian)
   const handleOnMouseEnter = () => {
     if (miniSidenav && !onMouseEnter) {
       setMiniSidenav(dispatch, false);
@@ -59,15 +59,29 @@ export default function App() {
   }, [pathname]);
 
   const filteredRoutes = useMemo(() => {
+    // Estas son las rutas que SIEMPRE deben existir, sea cual sea el estado de autenticación.
+    const publicKeys = ["about-us", "blog", "license", "become-associate"];
+
     if (!userProfile) {
-      return routes.filter((route) => route.key === "sign-in" || route.key === "sign-up");
+      // Si no hay usuario, solo permite las rutas públicas y las de autenticación.
+      return routes.filter(
+        (route) =>
+          publicKeys.includes(route.key) || route.key === "sign-in" || route.key === "sign-up"
+      );
     }
+
+    // Si hay un usuario logueado, empieza con todas las rutas...
     let userRoutes = routes.filter(
-      (route) => route.key !== "sign-in" && route.key !== "sign-up" && route.key !== "rtl"
+      (route) =>
+        // ...y oculta las que no necesita ver en el menú lateral.
+        route.key !== "sign-in" && route.key !== "sign-up" && route.key !== "rtl" // 'rtl' es de la plantilla, la quitamos
     );
+
+    // Si el rol es 'cliente', oculta también el dashboard.
     if (userProfile.role === "cliente") {
       userRoutes = userRoutes.filter((route) => route.key !== "dashboard");
     }
+
     return userRoutes;
   }, [userProfile]);
 
@@ -109,15 +123,14 @@ export default function App() {
   return (
     <ThemeProvider theme={darkMode ? themeDark : theme}>
       <CssBaseline />
-
-      {/* 👇 LA CORRECCIÓN CLAVE ESTÁ AQUÍ 👇 */}
       {layout === "dashboard" && !pathname.includes("/authentication") && (
         <>
           <Sidenav
             color={sidenavColor}
-            brand={(transparentSidenav && !darkMode) || whiteSidenav ? brandDark : brandWhite}
+            brand={brandDark}
             brandName="GoalTime"
-            routes={filteredRoutes}
+            // 👇 Le pasamos al Sidenav solo las rutas que tienen 'type: "collapse"' para que no muestre las públicas
+            routes={filteredRoutes.filter((route) => route.type === "collapse")}
             onMouseEnter={handleOnMouseEnter}
             onMouseLeave={handleOnMouseLeave}
           />
@@ -125,7 +138,6 @@ export default function App() {
           {configsButton}
         </>
       )}
-
       {layout === "vr" && <Configurator />}
       <Routes>
         {getRoutes(filteredRoutes)}

@@ -5,7 +5,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "services/firebaseService";
 import PropTypes from "prop-types";
-import FullScreenLoader from "components/FullScreenLoader";
+import { FullScreenLoader } from "components/FullScreenLoader"; // Asegúrate de que sea una importación nombrada
 
 const AuthContext = createContext();
 
@@ -16,14 +16,11 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
-  const [initialAuthLoading, setInitialAuthLoading] = useState(true); // Renombrado para claridad
-
-  // 👇 1. Se añade un nuevo estado para cargas iniciadas por el usuario
+  const [initialAuthLoading, setInitialAuthLoading] = useState(true);
   const [isActionLoading, setIsActionLoading] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      // ... (lógica para obtener el perfil de usuario no cambia)
       try {
         setCurrentUser(user);
         if (user) {
@@ -41,7 +38,7 @@ export const AuthProvider = ({ children }) => {
         console.error("Error al obtener el perfil de usuario:", error);
         setUserProfile(null);
       } finally {
-        setInitialAuthLoading(false); // Solo se desactiva la carga inicial
+        setInitialAuthLoading(false);
       }
     });
     return unsubscribe;
@@ -52,13 +49,13 @@ export const AuthProvider = ({ children }) => {
     userProfile,
     initialAuthLoading,
     isActionLoading,
-    setIsActionLoading, // 👈 2. Se exporta la función para poder activarla
+    setIsActionLoading,
   };
 
   return (
     <AuthContext.Provider value={value}>
-      {/* 👇 3. El loader se muestra si la carga inicial O una acción están activas */}
-      {initialAuthLoading || isActionLoading ? <FullScreenLoader /> : children}
+      {(initialAuthLoading || isActionLoading) && <FullScreenLoader />}
+      {children}
     </AuthContext.Provider>
   );
 };

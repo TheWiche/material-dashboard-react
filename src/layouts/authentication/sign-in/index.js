@@ -3,43 +3,31 @@
 * GoalTime App - v2.2.0
 =========================================================
 */
+// src/layouts/authentication/sign-in/index.js
 
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-
-// @mui material components
 import Card from "@mui/material/Card";
 import Switch from "@mui/material/Switch";
 import Grid from "@mui/material/Grid";
 import MuiLink from "@mui/material/Link";
-
-// @mui icons
 import FacebookIcon from "@mui/icons-material/Facebook";
 import GitHubIcon from "@mui/icons-material/GitHub";
 import GoogleIcon from "@mui/icons-material/Google";
-
-// GoalTime App components
 import MDBox from "components/MDBox";
 import MDTypography from "components/MDTypography";
 import MDInput from "components/MDInput";
 import MDButton from "components/MDButton";
-import MDSnackbar from "components/MDSnackbar"; // 👈 1. Importamos el componente de notificación
+import MDSnackbar from "components/MDSnackbar";
 import { useAuth } from "context/AuthContext";
-
-// Authentication layout components
 import BasicLayout from "layouts/authentication/components/BasicLayout";
-
-// Images
-import bgImage from "assets/images/bg-sign-in.png"; //bg-sign-in-basic.jpeg
-
-// Importamos nuestra función de login desde el servicio
+import bgImage from "assets/images/bg-sign-in.png";
 import { loginUser } from "services/firebaseService";
 
-// 👈 Función para obtener un mensaje de error amigable
 const getFriendlyErrorMessage = (errorCode) => {
   switch (errorCode) {
     case "auth/user-not-found":
-    case "auth/invalid-credential": // Error común para email/pass incorrectos
+    case "auth/invalid-credential":
       return "Credenciales incorrectas. Verifica tu correo y contraseña.";
     case "auth/wrong-password":
       return "La contraseña es incorrecta. Por favor, inténtalo de nuevo.";
@@ -52,31 +40,30 @@ const getFriendlyErrorMessage = (errorCode) => {
 
 function Basic() {
   const [rememberMe, setRememberMe] = useState(false);
-  const handleSetRememberMe = () => setRememberMe(!rememberMe);
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
   const { setIsActionLoading } = useAuth();
-
-  // 👈 2. Estados para manejar la notificación
   const [errorSB, setErrorSB] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+
   const openErrorSB = () => setErrorSB(true);
   const closeErrorSB = () => setErrorSB(false);
+
+  const handleSetRememberMe = () => setRememberMe(!rememberMe);
 
   const handleLogin = async (event) => {
     event.preventDefault();
     try {
-      // 👇 Le pasamos la función 'setIsActionLoading' como argumento
+      // Llama al servicio pasándole todo lo necesario
       await loginUser(email, password, navigate, setIsActionLoading);
     } catch (error) {
+      // Si el servicio lanza un error, lo atrapamos aquí y mostramos la notificación
       setErrorMessage(getFriendlyErrorMessage(error.code));
       openErrorSB();
     }
   };
 
-  // 👈 4. Definimos cómo se verá la notificación de error
   const renderErrorSB = (
     <MDSnackbar
       color="error"

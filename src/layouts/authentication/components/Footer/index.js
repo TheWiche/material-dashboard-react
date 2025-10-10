@@ -1,20 +1,7 @@
-/**
-=========================================================
-* GoalTime App - v2.2.0
-=========================================================
+// src/layouts/authentication/components/Footer/index.js
 
-* Product Page: https://www.goaltime.site/product/material-dashboard-react
-* Copyright 2023 Creative Tim (https://www.creative-tim.com)
-
-Coded by www.creative-tim.com
-
- =========================================================
-
-* The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-*/
-
-// prop-types is a library for typechecking of props
 import PropTypes from "prop-types";
+import { Link as RouterLink } from "react-router-dom"; // Se importa para enlaces internos
 
 // @mui material components
 import Container from "@mui/material/Container";
@@ -42,6 +29,7 @@ function Footer({ light }) {
           alignItems="center"
           px={1.5}
         >
+          {/* 👇 SECCIÓN DE COPYRIGHT ACTUALIZADA */}
           <MDBox
             display="flex"
             justifyContent="center"
@@ -57,13 +45,14 @@ function Footer({ light }) {
               </Icon>
             </MDBox>
             por
-            <Link href="https://www.goaltime.site/" target="_blank">
+            <Link href="#" target="_blank">
               <MDTypography variant="button" fontWeight="medium" color={light ? "white" : "dark"}>
-                &nbsp;Goal Time App&nbsp;
+                &nbsp;GoalTime&nbsp;
               </MDTypography>
             </Link>
-            por una web mejor.
           </MDBox>
+
+          {/* 👇 SECCIÓN DE ENLACES ACTUALIZADA */}
           <MDBox
             component="ul"
             sx={({ breakpoints }) => ({
@@ -75,25 +64,24 @@ function Footer({ light }) {
               mt: 3,
               mb: 0,
               p: 0,
-
               [breakpoints.up("lg")]: {
                 mt: 0,
               },
             })}
           >
-            <MDBox component="li" pr={2} lineHeight={1}>
-              <Link href="https://www.goaltime.site/" target="_blank">
+            <MDBox component="li" px={2} lineHeight={1}>
+              <Link component={RouterLink} to="/become-associate">
                 <MDTypography
                   variant="button"
                   fontWeight="regular"
                   color={light ? "white" : "dark"}
                 >
-                  Creative Tim
+                  Conviértete en Asociado
                 </MDTypography>
               </Link>
             </MDBox>
             <MDBox component="li" px={2} lineHeight={1}>
-              <Link href="https://www.goaltime.site/presentation" target="_blank">
+              <Link component={RouterLink} to="/sobre-nosotros">
                 <MDTypography
                   variant="button"
                   fontWeight="regular"
@@ -104,7 +92,7 @@ function Footer({ light }) {
               </Link>
             </MDBox>
             <MDBox component="li" px={2} lineHeight={1}>
-              <Link href="https://www.goaltime.site/blog" target="_blank">
+              <Link component={RouterLink} to="/blog">
                 <MDTypography
                   variant="button"
                   fontWeight="regular"
@@ -115,7 +103,7 @@ function Footer({ light }) {
               </Link>
             </MDBox>
             <MDBox component="li" pl={2} lineHeight={1}>
-              <Link href="https://www.goaltime.site/license" target="_blank">
+              <Link component={RouterLink} to="/licencia">
                 <MDTypography
                   variant="button"
                   fontWeight="regular"
@@ -132,12 +120,10 @@ function Footer({ light }) {
   );
 }
 
-// Setting default props for the Footer
 Footer.defaultProps = {
   light: false,
 };
 
-// Typechecking props for the Footer
 Footer.propTypes = {
   light: PropTypes.bool,
 };
