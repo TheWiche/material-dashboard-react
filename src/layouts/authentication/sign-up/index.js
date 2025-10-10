@@ -3,7 +3,7 @@
 * GoalTime App - v2.2.0
 =========================================================
 */
-
+// src/layouts/authentication/sign-up/index.js
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -58,9 +58,10 @@ function Cover() {
   const handleRegister = async (event) => {
     event.preventDefault();
     try {
-      // 👇 Le pasamos la función 'setIsActionLoading' como argumento
+      // Llama al servicio pasándole todo lo necesario
       await registerUser(name, email, password, navigate, setIsActionLoading);
     } catch (error) {
+      // Si el servicio lanza un error, lo atrapamos aquí y mostramos la notificación
       setErrorMessage(getFriendlyErrorMessage(error.code));
       openErrorSB();
     }

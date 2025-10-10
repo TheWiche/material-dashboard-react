@@ -25,7 +25,7 @@ const db = getFirestore(app);
 
 export const registerUser = async (name, email, password, navigate, setIsActionLoading) => {
   try {
-    setIsActionLoading(true);
+    setIsActionLoading(true); // Activa el loader
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
     await setDoc(doc(db, "users", user.uid), {
@@ -37,34 +37,19 @@ export const registerUser = async (name, email, password, navigate, setIsActionL
     });
     navigate("/canchas");
   } catch (error) {
-    console.error("Error al registrar usuario:", error.code, error.message);
-    throw error;
+    throw error; // Lanza el error para que la UI lo atrape
   } finally {
-    setIsActionLoading(false);
+    setIsActionLoading(false); // Siempre desactiva el loader
   }
 };
 
-// 👇 FUNCIÓN LOGINUSER CORREGIDA
 export const loginUser = async (email, password, navigate, setIsActionLoading) => {
-  let userCredential;
   try {
-    setIsActionLoading(true);
-    // 1. Intenta solo la autenticación primero
-    userCredential = await signInWithEmailAndPassword(auth, email, password);
-  } catch (authError) {
-    // Si esto falla, es un error de autenticación real
-    console.error("Error de Autenticación:", authError.code);
-    setIsActionLoading(false); // Detiene el loader
-    throw authError; // Lanza el error para que la UI lo muestre
-  }
-
-  // Si la autenticación fue exitosa, el usuario ya está logueado.
-  // Ahora, intenta obtener el perfil y navegar.
-  try {
+    setIsActionLoading(true); // Activa el loader
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
     const userDocRef = doc(db, "users", user.uid);
     const userDocSnap = await getDoc(userDocRef);
-
     if (userDocSnap.exists()) {
       const userProfile = userDocSnap.data();
       if (userProfile.role === "cliente") {
@@ -73,17 +58,12 @@ export const loginUser = async (email, password, navigate, setIsActionLoading) =
         navigate("/dashboard");
       }
     } else {
-      console.warn("Login exitoso, pero usuario sin perfil en Firestore.");
-      navigate("/canchas"); // Navega a un lugar seguro por defecto
+      navigate("/canchas");
     }
-  } catch (profileError) {
-    // Si obtener el perfil falla, el login YA FUE EXITOSO.
-    // No mostramos un error, solo un aviso en consola y navegamos a un lugar seguro.
-    console.warn("Login exitoso, pero falló la obtención del perfil:", profileError);
-    navigate("/canchas");
+  } catch (error) {
+    throw error; // Lanza el error para que la UI lo atrape
   } finally {
-    // Esto se ejecuta después de la navegación
-    setIsActionLoading(false);
+    setIsActionLoading(false); // Siempre desactiva el loader
   }
 };
 

@@ -1,20 +1,7 @@
-/**
-=========================================================
-* GoalTime App - v2.2.0
-=========================================================
+// src/examples/Footer/index.js
 
-* Product Page: https://www.goaltime.site/product/material-dashboard-react
-* Copyright 2023 Creative Tim (https://www.creative-tim.com)
-
-Coded by www.creative-tim.com
-
- =========================================================
-
-* The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-*/
-
-// prop-types is a library for typechecking of props
 import PropTypes from "prop-types";
+import { Link as RouterLink } from "react-router-dom"; // Se importa para enlaces internos
 
 // @mui material components
 import Link from "@mui/material/Link";
@@ -34,11 +21,20 @@ function Footer({ company, links }) {
   const renderLinks = () =>
     links.map((link) => (
       <MDBox key={link.name} component="li" px={2} lineHeight={1}>
-        <Link href={link.href} target="_blank">
-          <MDTypography variant="button" fontWeight="regular" color="text">
-            {link.name}
-          </MDTypography>
-        </Link>
+        {/* Lógica para diferenciar enlaces internos y externos */}
+        {link.isInternal ? (
+          <Link component={RouterLink} to={link.href}>
+            <MDTypography variant="button" fontWeight="regular" color="text">
+              {link.name}
+            </MDTypography>
+          </Link>
+        ) : (
+          <Link href={link.href} target="_blank">
+            <MDTypography variant="button" fontWeight="regular" color="text">
+              {link.name}
+            </MDTypography>
+          </Link>
+        )}
       </MDBox>
     ));
 
@@ -51,6 +47,7 @@ function Footer({ company, links }) {
       alignItems="center"
       px={1.5}
     >
+      {/* 👇 SECCIÓN DE COPYRIGHT ACTUALIZADA */}
       <MDBox
         display="flex"
         justifyContent="center"
@@ -60,19 +57,18 @@ function Footer({ company, links }) {
         fontSize={size.sm}
         px={1.5}
       >
-        &copy; {new Date().getFullYear()}, made with
+        &copy; {new Date().getFullYear()}, hecho con
         <MDBox fontSize={size.md} color="text" mb={-0.5} mx={0.25}>
           <Icon color="inherit" fontSize="inherit">
             favorite
           </Icon>
         </MDBox>
-        by
+        por
         <Link href={href} target="_blank">
           <MDTypography variant="button" fontWeight="medium">
             &nbsp;{name}&nbsp;
           </MDTypography>
         </Link>
-        for a better web.
       </MDBox>
       <MDBox
         component="ul"
@@ -85,7 +81,6 @@ function Footer({ company, links }) {
           mt: 3,
           mb: 0,
           p: 0,
-
           [breakpoints.up("lg")]: {
             mt: 0,
           },
@@ -97,18 +92,17 @@ function Footer({ company, links }) {
   );
 }
 
-// Setting default values for the props of Footer
+// 👇 VALORES POR DEFECTO ACTUALIZADOS
 Footer.defaultProps = {
-  company: { href: "https://www.goaltime.site/", name: "GoalTime App" },
+  company: { href: "#", name: "GoalTime" },
   links: [
-    { href: "https://www.goaltime.site/", name: "GoalTime App" },
-    { href: "https://www.goaltime.site/presentation", name: "Sobre Nosotros" },
-    { href: "https://www.goaltime.site/blog", name: "Blog" },
-    { href: "https://www.goaltime.site/license", name: "Licencia" },
+    { href: "/become-associate", name: "Conviértete en Asociado", isInternal: true },
+    { href: "/sobre-nosotros", name: "Sobre Nosotros", isInternal: true },
+    { href: "/blog", name: "Blog", isInternal: true },
+    { href: "/licencia", name: "Licencia", isInternal: true },
   ],
 };
 
-// Typechecking props for the Footer
 Footer.propTypes = {
   company: PropTypes.objectOf(PropTypes.string),
   links: PropTypes.arrayOf(PropTypes.object),
