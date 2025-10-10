@@ -59,7 +59,7 @@ function Footer({ light }) {
             por
             <Link href="https://www.goaltime.site/" target="_blank">
               <MDTypography variant="button" fontWeight="medium" color={light ? "white" : "dark"}>
-                &nbsp;Creative Tim&nbsp;
+                &nbsp;Goal Time App&nbsp;
               </MDTypography>
             </Link>
             por una web mejor.
