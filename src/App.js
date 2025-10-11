@@ -13,8 +13,8 @@ import themeDark from "assets/theme-dark";
 import routes from "routes";
 import { useMaterialUIController, setMiniSidenav, setOpenConfigurator } from "context";
 import { useAuth } from "context/AuthContext";
-import brandWhite from "assets/images/LogoRecortado.png";
-import brandDark from "assets/images/LogoRecortado.png";
+import brandWhite from "assets/images/Logo.png";
+import brandDark from "assets/images/Logo.png";
 
 export default function App() {
   const [controller, dispatch] = useMaterialUIController();

@@ -1,37 +1,14 @@
-/**
-=========================================================
-* GoalTime App - v2.2.0
-=========================================================
+// src/layouts/authentication/components/BasicLayout/index.js
 
-* Product Page: https://www.goaltime.site/product/material-dashboard-react
-* Copyright 2023 Creative Tim (https://www.creative-tim.com)
-
-Coded by www.creative-tim.com
-
- =========================================================
-
-* The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-*/
-
-// prop-types is a library for typechecking of props
 import PropTypes from "prop-types";
-
-// @mui material components
 import Grid from "@mui/material/Grid";
-
-// GoalTime App components
 import MDBox from "components/MDBox";
-
-// GoalTime App example components
 import PageLayout from "examples/LayoutContainers/PageLayout";
-
-// Authentication pages components
 import Footer from "layouts/authentication/components/Footer";
 
 function BasicLayout({ image, children }) {
   return (
     <PageLayout>
-      {/* Navbar intentionally removed for authentication pages (Sign In / Sign Up) */}
       <MDBox
         position="absolute"
         width="100%"
@@ -48,19 +25,27 @@ function BasicLayout({ image, children }) {
           backgroundRepeat: "no-repeat",
         }}
       />
-      <MDBox px={1} width="100%" height="100vh" mx="auto">
-        <Grid container spacing={1} justifyContent="center" alignItems="center" height="100%">
+      {/* 👇 Este es el nuevo contenedor principal con Flexbox */}
+      <MDBox px={1} width="100%" height="100vh" mx="auto" display="flex" flexDirection="column">
+        {/* Este Grid ahora crece para ocupar el espacio disponible, empujando al footer */}
+        <Grid
+          container
+          spacing={1}
+          justifyContent="center"
+          alignItems="center"
+          sx={{ height: "100%", flexGrow: 1 }} // 👈 Se añade flexGrow
+        >
           <Grid item xs={11} sm={9} md={5} lg={4} xl={3}>
             {children}
           </Grid>
         </Grid>
+        {/* El footer ahora es el último elemento del contenedor Flexbox */}
+        <Footer light />
       </MDBox>
-      <Footer light />
     </PageLayout>
   );
 }
 
-// Typechecking props for the BasicLayout
 BasicLayout.propTypes = {
   image: PropTypes.string.isRequired,
   children: PropTypes.node.isRequired,

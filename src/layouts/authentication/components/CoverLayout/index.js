@@ -13,6 +13,8 @@ Coded by www.creative-tim.com
 * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 */
 
+//src/layouts/authentication/components/BasicLayout/index.jss
+
 // prop-types is a library for typechecking of props
 import PropTypes from "prop-types";
 

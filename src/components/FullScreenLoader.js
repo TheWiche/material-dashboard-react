@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Box, CircularProgress, Typography, Fade } from "@mui/material";
-import logo from "assets/images/LogoRecortado.png";
+import logo from "assets/images/Logo.png";
 
 export function FullScreenLoader() {
   return (

@@ -1,44 +1,59 @@
-/**
-=========================================================
-* GoalTime App - v2.2.0
-=========================================================
-*/
 // src/layouts/authentication/sign-up/index.js
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 // @mui material components
 import Card from "@mui/material/Card";
 import Checkbox from "@mui/material/Checkbox";
+import LinearProgress from "@mui/material/LinearProgress"; // 👈 Para la barra de fuerza
+import InputAdornment from "@mui/material/InputAdornment"; // 👈 Para el ícono del ojo
+import IconButton from "@mui/material/IconButton";
+import Icon from "@mui/material/Icon";
 
 // GoalTime App components
 import MDBox from "components/MDBox";
 import MDTypography from "components/MDTypography";
 import MDInput from "components/MDInput";
 import MDButton from "components/MDButton";
-import MDSnackbar from "components/MDSnackbar"; // 👈 1. Importamos el componente de notificación
+import MDSnackbar from "components/MDSnackbar";
 import { useAuth } from "context/AuthContext";
 
 // Authentication layout components
 import CoverLayout from "layouts/authentication/components/CoverLayout";
 
 // Images
-import bgImage from "assets/images/bg-sign-up-cover.png"; //bg-sign-up-cover.jpeg
+import bgImage from "assets/images/bg-sign-up-cover.png";
 
 // Importamos nuestra función de registro desde el servicio
 import { registerUser } from "services/firebaseService";
 
-// 👈 Función para obtener un mensaje de error amigable
+// ... (getFriendlyErrorMessage no cambia)
 const getFriendlyErrorMessage = (errorCode) => {
-  switch (errorCode) {
-    case "auth/email-already-in-use":
-      return "Este correo electrónico ya está registrado.";
-    case "auth/invalid-email":
-      return "El formato del correo electrónico no es válido.";
-    case "auth/weak-password":
-      return "La contraseña debe tener al menos 6 caracteres.";
+  // ...
+};
+
+// 👈 Función para calcular la fuerza de la contraseña
+const calculatePasswordStrength = (password) => {
+  let score = 0;
+  if (!password) return { value: 0, color: "error", label: "" };
+
+  if (password.length >= 8) score++;
+  if (/[A-Z]/.test(password)) score++;
+  if (/[0-9]/.test(password)) score++;
+  if (/[^A-Za-z0-9]/.test(password)) score++;
+
+  switch (score) {
+    case 1:
+      return { value: 25, color: "error", label: "Muy Débil" };
+    case 2:
+      return { value: 50, color: "warning", label: "Media" };
+    case 3:
+      return { value: 75, color: "info", label: "Fuerte" };
+    case 4:
+      return { value: 100, color: "success", label: "Muy Fuerte" };
     default:
-      return "Ocurrió un error inesperado. Por favor, inténtalo más tarde.";
+      return { value: 0, color: "error", label: "Débil" };
   }
 };
 
@@ -46,28 +61,50 @@ function Cover() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState(""); // 👈 Nuevo estado para confirmar contraseña
+  const [agreeTerms, setAgreeTerms] = useState(false); // 👈 Nuevo estado para términos y condiciones
+  const [showPassword, setShowPassword] = useState(false); // 👈 Nuevo estado para mostrar/ocultar contraseña
+  const [strength, setStrength] = useState({ value: 0, color: "error", label: "" }); // 👈 Nuevo estado para la fuerza
+
   const navigate = useNavigate();
   const { setIsActionLoading } = useAuth();
 
-  // 👈 2. Estados para manejar la notificación
   const [errorSB, setErrorSB] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [jokeSB, setJokeSB] = useState(false); // 👈 Nuevo estado para la notificación de broma
+
   const openErrorSB = () => setErrorSB(true);
   const closeErrorSB = () => setErrorSB(false);
+  const openJokeSB = () => setJokeSB(true);
+  const closeJokeSB = () => setJokeSB(false);
+
+  // 👈 Efecto que se ejecuta cada vez que la contraseña cambia para calcular su fuerza
+  useEffect(() => {
+    setStrength(calculatePasswordStrength(password));
+  }, [password]);
 
   const handleRegister = async (event) => {
     event.preventDefault();
+    // 👈 Validaciones antes de enviar
+    if (password !== confirmPassword) {
+      setErrorMessage("Las contraseñas no coinciden.");
+      openErrorSB();
+      return;
+    }
+    if (!agreeTerms) {
+      setErrorMessage("Debes aceptar los términos y condiciones.");
+      openErrorSB();
+      return;
+    }
+
     try {
-      // Llama al servicio pasándole todo lo necesario
       await registerUser(name, email, password, navigate, setIsActionLoading);
     } catch (error) {
-      // Si el servicio lanza un error, lo atrapamos aquí y mostramos la notificación
       setErrorMessage(getFriendlyErrorMessage(error.code));
       openErrorSB();
     }
   };
 
-  // 👈 4. Definimos cómo se verá la notificación de error
   const renderErrorSB = (
     <MDSnackbar
       color="error"
@@ -79,6 +116,20 @@ function Cover() {
       onClose={closeErrorSB}
       close={closeErrorSB}
       bgWhite
+    />
+  );
+
+  // 👈 Se renderiza la notificación de broma
+  const renderJokeSB = (
+    <MDSnackbar
+      color="dark"
+      icon="sentiment_satisfied_alt"
+      title="Términos y Condiciones"
+      content="Si te hackeo es bajo tu propia responsabilidad. 😎"
+      dateTime="justo ahora"
+      open={jokeSB}
+      onClose={closeJokeSB}
+      close={closeJokeSB}
     />
   );
 
@@ -100,7 +151,7 @@ function Cover() {
             Regístrate hoy
           </MDTypography>
           <MDTypography display="block" variant="button" color="white" my={1}>
-            Ingresa tu correo y contraseña para registrarte
+            Ingresa tus datos para registrarte
           </MDTypography>
         </MDBox>
         <MDBox pt={4} pb={3} px={3}>
@@ -113,6 +164,7 @@ function Cover() {
                 fullWidth
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                required
               />
             </MDBox>
             <MDBox mb={2}>
@@ -123,41 +175,96 @@ function Cover() {
                 fullWidth
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                required
               />
             </MDBox>
-            <MDBox mb={2}>
+            <MDBox mb={1}>
               <MDInput
-                type="password"
+                type={showPassword ? "text" : "password"} // 👈 Tipo de input dinámico
                 label="Contraseña"
                 variant="standard"
                 fullWidth
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                required
+                // 👇 Se añade el ícono del ojo
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
+                        <Icon fontSize="small">
+                          {showPassword ? "visibility" : "visibility_off"}
+                        </Icon>
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </MDBox>
+            {/* 👇 Barra de progreso para la fuerza de la contraseña */}
+            {password && (
+              <MDBox mt={0.75} display="flex" alignItems="center">
+                <LinearProgress
+                  variant="determinate"
+                  value={strength.value}
+                  color={strength.color}
+                  sx={{ flexGrow: 1 }}
+                />
+                <MDTypography
+                  variant="caption"
+                  color={strength.color}
+                  sx={{ ml: 1, minWidth: "80px" }}
+                >
+                  {strength.label}
+                </MDTypography>
+              </MDBox>
+            )}
+            <MDBox mt={2} mb={2}>
+              {/* 👇 Nuevo campo para repetir la contraseña */}
+              <MDInput
+                type={showPassword ? "text" : "password"}
+                label="Confirmar Contraseña"
+                variant="standard"
+                fullWidth
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                error={confirmPassword !== "" && password !== confirmPassword}
               />
             </MDBox>
             <MDBox display="flex" alignItems="center" ml={-1}>
-              <Checkbox />
+              {/* 👇 Checkbox ahora es funcional */}
+              <Checkbox checked={agreeTerms} onChange={(e) => setAgreeTerms(e.target.checked)} />
               <MDTypography
                 variant="button"
                 fontWeight="regular"
                 color="text"
-                sx={{ cursor: "pointer", userSelect: "none", ml: -1 }}
+                sx={{ cursor: "pointer", userSelect: "none" }}
+                onClick={(e) => setAgreeTerms(!agreeTerms)}
               >
                 &nbsp;&nbsp;Acepto los&nbsp;
               </MDTypography>
               <MDTypography
-                component="a"
-                href="#"
+                component="span" // Se cambia a 'span' para que no actúe como link
                 variant="button"
                 fontWeight="bold"
                 color="info"
                 textGradient
+                onClick={openJokeSB} // 👈 Se activa la broma al hacer clic
+                sx={{ cursor: "pointer" }}
               >
                 Términos y Condiciones
               </MDTypography>
             </MDBox>
             <MDBox mt={4} mb={1}>
-              <MDButton type="submit" variant="gradient" color="info" fullWidth>
+              {/* 👇 El botón se deshabilita si los términos no son aceptados */}
+              <MDButton
+                type="submit"
+                variant="gradient"
+                color="info"
+                fullWidth
+                disabled={!agreeTerms}
+              >
                 Crear cuenta
               </MDButton>
             </MDBox>
@@ -179,8 +286,8 @@ function Cover() {
           </MDBox>
         </MDBox>
       </Card>
-      {/* 👈 5. Renderizamos la notificación para que esté lista para mostrarse */}
       {renderErrorSB}
+      {renderJokeSB} {/* 👈 Se renderiza la nueva notificación */}
     </CoverLayout>
   );
 }

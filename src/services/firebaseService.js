@@ -5,6 +5,8 @@ import {
   getAuth,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup,
   signOut,
 } from "firebase/auth";
 import { getFirestore, doc, setDoc, serverTimestamp, getDoc } from "firebase/firestore";
@@ -43,9 +45,15 @@ export const registerUser = async (name, email, password, navigate, setIsActionL
   }
 };
 
-export const loginUser = async (email, password, navigate, setIsActionLoading) => {
+export const loginUser = async (email, password, rememberMe, navigate, setIsActionLoading) => {
   try {
-    setIsActionLoading(true); // Activa el loader
+    setIsActionLoading(true);
+
+    // 1. Decide y establece el tipo de persistencia ANTES de iniciar sesión
+    const persistenceType = rememberMe ? browserLocalPersistence : browserSessionPersistence;
+    await setPersistence(auth, persistenceType);
+
+    // 2. Procede con el resto de la lógica que ya tenías
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
     const userDocRef = doc(db, "users", user.uid);
@@ -61,14 +69,39 @@ export const loginUser = async (email, password, navigate, setIsActionLoading) =
       navigate("/canchas");
     }
   } catch (error) {
-    throw error; // Lanza el error para que la UI lo atrape
+    throw error;
   } finally {
-    setIsActionLoading(false); // Siempre desactiva el loader
+    setIsActionLoading(false);
   }
 };
 
 export const logoutUser = () => {
   return signOut(auth);
+};
+
+export const signInWithGoogle = async () => {
+  const provider = new GoogleAuthProvider();
+  const result = await signInWithPopup(auth, provider);
+  const user = result.user;
+
+  // Revisa si el usuario ya existe en nuestra base de datos 'users'
+  const userDocRef = doc(db, "users", user.uid);
+  const userDocSnap = await getDoc(userDocRef);
+
+  // Si el usuario NO existe, lo creamos
+  if (!userDocSnap.exists()) {
+    await setDoc(userDocRef, {
+      uid: user.uid,
+      name: user.displayName,
+      email: user.email,
+      role: "cliente",
+      createdAt: serverTimestamp(),
+    });
+  }
+
+  // Devuelve el perfil del usuario para la redirección
+  const finalProfileSnap = await getDoc(userDocRef);
+  return finalProfileSnap.data();
 };
 
 export { auth, db };

@@ -1,8 +1,3 @@
-/**
-=========================================================
-* GoalTime App - v2.2.0
-=========================================================
-*/
 // src/layouts/authentication/sign-in/index.js
 
 import { useState } from "react";
@@ -11,6 +6,9 @@ import Card from "@mui/material/Card";
 import Switch from "@mui/material/Switch";
 import Grid from "@mui/material/Grid";
 import MuiLink from "@mui/material/Link";
+import InputAdornment from "@mui/material/InputAdornment";
+import IconButton from "@mui/material/IconButton";
+import Icon from "@mui/material/Icon";
 import FacebookIcon from "@mui/icons-material/Facebook";
 import GitHubIcon from "@mui/icons-material/GitHub";
 import GoogleIcon from "@mui/icons-material/Google";
@@ -22,13 +20,14 @@ import MDSnackbar from "components/MDSnackbar";
 import { useAuth } from "context/AuthContext";
 import BasicLayout from "layouts/authentication/components/BasicLayout";
 import bgImage from "assets/images/bg-sign-in.png";
-import { loginUser } from "services/firebaseService";
+import { loginUser, signInWithGoogle } from "services/firebaseService";
 
 const getFriendlyErrorMessage = (errorCode) => {
   switch (errorCode) {
-    case "auth/user-not-found":
     case "auth/invalid-credential":
       return "Credenciales incorrectas. Verifica tu correo y contraseña.";
+    case "auth/user-not-found":
+      return "No se encontró ningún usuario con este correo.";
     case "auth/wrong-password":
       return "La contraseña es incorrecta. Por favor, inténtalo de nuevo.";
     case "auth/invalid-email":
@@ -42,6 +41,7 @@ function Basic() {
   const [rememberMe, setRememberMe] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { setIsActionLoading } = useAuth();
   const [errorSB, setErrorSB] = useState(false);
@@ -49,18 +49,40 @@ function Basic() {
 
   const openErrorSB = () => setErrorSB(true);
   const closeErrorSB = () => setErrorSB(false);
-
   const handleSetRememberMe = () => setRememberMe(!rememberMe);
+  const handleShowPassword = () => setShowPassword(!showPassword);
 
   const handleLogin = async (event) => {
     event.preventDefault();
     try {
-      // Llama al servicio pasándole todo lo necesario
-      await loginUser(email, password, navigate, setIsActionLoading);
+      await loginUser(email, password, rememberMe, navigate, setIsActionLoading);
     } catch (error) {
-      // Si el servicio lanza un error, lo atrapamos aquí y mostramos la notificación
       setErrorMessage(getFriendlyErrorMessage(error.code));
       openErrorSB();
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setIsActionLoading(true);
+      const userProfile = await signInWithGoogle();
+      if (userProfile.role === "cliente") {
+        navigate("/canchas");
+      } else {
+        navigate("/dashboard");
+      }
+    } catch (error) {
+      // 👇 LÓGICA MEJORADA PARA MANEJAR EL ERROR ESPECÍFICO
+      if (error.code === "auth/account-exists-with-different-credential") {
+        setErrorMessage(
+          "Ya existe una cuenta con este email. Inicia sesión con tu método original para vincularla."
+        );
+      } else {
+        setErrorMessage(getFriendlyErrorMessage(error.code));
+      }
+      openErrorSB();
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
@@ -107,7 +129,13 @@ function Basic() {
               </MDTypography>
             </Grid>
             <Grid item xs={2}>
-              <MDTypography component={MuiLink} href="#" variant="body1" color="white">
+              <MDTypography
+                component={MuiLink}
+                href="#"
+                variant="body1"
+                color="white"
+                onClick={handleGoogleSignIn}
+              >
                 <GoogleIcon color="inherit" />
               </MDTypography>
             </Grid>
@@ -126,11 +154,22 @@ function Basic() {
             </MDBox>
             <MDBox mb={2}>
               <MDInput
-                type="password"
+                type={showPassword ? "text" : "password"}
                 label="Contraseña"
                 fullWidth
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton onClick={handleShowPassword} edge="end">
+                        <Icon fontSize="small">
+                          {showPassword ? "visibility" : "visibility_off"}
+                        </Icon>
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
               />
             </MDBox>
             <MDBox display="flex" alignItems="center" ml={-1}>
@@ -168,7 +207,6 @@ function Basic() {
           </MDBox>
         </MDBox>
       </Card>
-      {/* 👈 5. Renderizamos la notificación para que esté lista para mostrarse */}
       {renderErrorSB}
     </BasicLayout>
   );
