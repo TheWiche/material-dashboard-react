@@ -6,8 +6,8 @@ import { Link, useNavigate } from "react-router-dom";
 // @mui material components
 import Card from "@mui/material/Card";
 import Checkbox from "@mui/material/Checkbox";
-import LinearProgress from "@mui/material/LinearProgress"; // 👈 Para la barra de fuerza
-import InputAdornment from "@mui/material/InputAdornment"; // 👈 Para el ícono del ojo
+import LinearProgress from "@mui/material/LinearProgress";
+import InputAdornment from "@mui/material/InputAdornment";
 import IconButton from "@mui/material/IconButton";
 import Icon from "@mui/material/Icon";
 
@@ -17,7 +17,7 @@ import MDTypography from "components/MDTypography";
 import MDInput from "components/MDInput";
 import MDButton from "components/MDButton";
 import MDSnackbar from "components/MDSnackbar";
-import { useAuth } from "context/AuthContext";
+import FullScreenLoader from "components/FullScreenLoader";
 
 // Authentication layout components
 import CoverLayout from "layouts/authentication/components/CoverLayout";
@@ -28,9 +28,17 @@ import bgImage from "assets/images/bg-sign-up-cover.png";
 // Importamos nuestra función de registro desde el servicio
 import { registerUser } from "services/firebaseService";
 
-// ... (getFriendlyErrorMessage no cambia)
 const getFriendlyErrorMessage = (errorCode) => {
-  // ...
+  switch (errorCode) {
+    case "auth/email-already-in-use":
+      return "Este correo electrónico ya está registrado.";
+    case "auth/invalid-email":
+      return "El formato del correo electrónico no es válido.";
+    case "auth/weak-password":
+      return "La contraseña debe tener al menos 6 caracteres.";
+    default:
+      return "Ocurrió un error inesperado. Por favor, inténtalo más tarde.";
+  }
 };
 
 // 👈 Función para calcular la fuerza de la contraseña
@@ -61,31 +69,27 @@ function Cover() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState(""); // 👈 Nuevo estado para confirmar contraseña
-  const [agreeTerms, setAgreeTerms] = useState(false); // 👈 Nuevo estado para términos y condiciones
-  const [showPassword, setShowPassword] = useState(false); // 👈 Nuevo estado para mostrar/ocultar contraseña
-  const [strength, setStrength] = useState({ value: 0, color: "error", label: "" }); // 👈 Nuevo estado para la fuerza
-
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [strength, setStrength] = useState({ value: 0, color: "error", label: "" });
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { setIsActionLoading } = useAuth();
-
   const [errorSB, setErrorSB] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [jokeSB, setJokeSB] = useState(false); // 👈 Nuevo estado para la notificación de broma
+  const [jokeSB, setJokeSB] = useState(false);
 
   const openErrorSB = () => setErrorSB(true);
   const closeErrorSB = () => setErrorSB(false);
   const openJokeSB = () => setJokeSB(true);
   const closeJokeSB = () => setJokeSB(false);
 
-  // 👈 Efecto que se ejecuta cada vez que la contraseña cambia para calcular su fuerza
   useEffect(() => {
     setStrength(calculatePasswordStrength(password));
   }, [password]);
 
   const handleRegister = async (event) => {
     event.preventDefault();
-    // 👈 Validaciones antes de enviar
     if (password !== confirmPassword) {
       setErrorMessage("Las contraseñas no coinciden.");
       openErrorSB();
@@ -97,11 +101,15 @@ function Cover() {
       return;
     }
 
+    setIsLoading(true);
     try {
-      await registerUser(name, email, password, navigate, setIsActionLoading);
+      await registerUser(name, email, password);
+      navigate("/canchas");
     } catch (error) {
       setErrorMessage(getFriendlyErrorMessage(error.code));
       openErrorSB();
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -135,6 +143,7 @@ function Cover() {
 
   return (
     <CoverLayout image={bgImage}>
+      {isLoading && <FullScreenLoader />}
       <Card>
         <MDBox
           variant="gradient"

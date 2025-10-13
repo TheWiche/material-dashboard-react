@@ -9,15 +9,13 @@ import MuiLink from "@mui/material/Link";
 import InputAdornment from "@mui/material/InputAdornment";
 import IconButton from "@mui/material/IconButton";
 import Icon from "@mui/material/Icon";
-import FacebookIcon from "@mui/icons-material/Facebook";
-import GitHubIcon from "@mui/icons-material/GitHub";
-import GoogleIcon from "@mui/icons-material/Google";
+import { Facebook, GitHub, Google } from "@mui/icons-material";
 import MDBox from "components/MDBox";
 import MDTypography from "components/MDTypography";
 import MDInput from "components/MDInput";
 import MDButton from "components/MDButton";
 import MDSnackbar from "components/MDSnackbar";
-import { useAuth } from "context/AuthContext";
+import { FullScreenLoader } from "components/FullScreenLoader";
 import BasicLayout from "layouts/authentication/components/BasicLayout";
 import bgImage from "assets/images/bg-sign-in.png";
 import { loginUser, signInWithGoogle } from "services/firebaseService";
@@ -26,12 +24,6 @@ const getFriendlyErrorMessage = (errorCode) => {
   switch (errorCode) {
     case "auth/invalid-credential":
       return "Credenciales incorrectas. Verifica tu correo y contraseña.";
-    case "auth/user-not-found":
-      return "No se encontró ningún usuario con este correo.";
-    case "auth/wrong-password":
-      return "La contraseña es incorrecta. Por favor, inténtalo de nuevo.";
-    case "auth/invalid-email":
-      return "El formato del correo electrónico no es válido.";
     default:
       return "Ocurrió un error. Por favor, inténtalo más tarde.";
   }
@@ -42,8 +34,8 @@ function Basic() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { setIsActionLoading } = useAuth();
   const [errorSB, setErrorSB] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -54,17 +46,25 @@ function Basic() {
 
   const handleLogin = async (event) => {
     event.preventDefault();
+    setIsLoading(true);
     try {
-      await loginUser(email, password, rememberMe, navigate, setIsActionLoading);
+      const userProfile = await loginUser(email, password, rememberMe);
+      if (userProfile.role === "cliente") {
+        navigate("/canchas");
+      } else {
+        navigate("/dashboard");
+      }
     } catch (error) {
       setErrorMessage(getFriendlyErrorMessage(error.code));
       openErrorSB();
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleGoogleSignIn = async () => {
+    setIsLoading(true);
     try {
-      setIsActionLoading(true);
       const userProfile = await signInWithGoogle();
       if (userProfile.role === "cliente") {
         navigate("/canchas");
@@ -72,17 +72,16 @@ function Basic() {
         navigate("/dashboard");
       }
     } catch (error) {
-      // 👇 LÓGICA MEJORADA PARA MANEJAR EL ERROR ESPECÍFICO
       if (error.code === "auth/account-exists-with-different-credential") {
         setErrorMessage(
-          "Ya existe una cuenta con este email. Inicia sesión con tu método original para vincularla."
+          "Ya existe una cuenta con este email. Inicia sesión con tu método original."
         );
       } else {
         setErrorMessage(getFriendlyErrorMessage(error.code));
       }
       openErrorSB();
     } finally {
-      setIsActionLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -102,6 +101,7 @@ function Basic() {
 
   return (
     <BasicLayout image={bgImage}>
+      {isLoading && <FullScreenLoader />}
       <Card>
         <MDBox
           variant="gradient"
@@ -120,12 +120,12 @@ function Basic() {
           <Grid container spacing={3} justifyContent="center" sx={{ mt: 1, mb: 2 }}>
             <Grid item xs={2}>
               <MDTypography component={MuiLink} href="#" variant="body1" color="white">
-                <FacebookIcon color="inherit" />
+                <Facebook color="inherit" />
               </MDTypography>
             </Grid>
             <Grid item xs={2}>
               <MDTypography component={MuiLink} href="#" variant="body1" color="white">
-                <GitHubIcon color="inherit" />
+                <GitHub color="inherit" />
               </MDTypography>
             </Grid>
             <Grid item xs={2}>
@@ -136,7 +136,7 @@ function Basic() {
                 color="white"
                 onClick={handleGoogleSignIn}
               >
-                <GoogleIcon color="inherit" />
+                <Google color="inherit" />
               </MDTypography>
             </Grid>
           </Grid>

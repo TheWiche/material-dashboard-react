@@ -5,7 +5,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "services/firebaseService";
 import PropTypes from "prop-types";
-import { FullScreenLoader } from "components/FullScreenLoader"; // Asegúrate de que sea una importación nombrada
+import { FullScreenLoader } from "components/FullScreenLoader";
 
 const AuthContext = createContext();
 
@@ -54,8 +54,14 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={value}>
-      {(initialAuthLoading || isActionLoading) && <FullScreenLoader />}
-      {children}
+      {/* 👇 LA LÓGICA HÍBRIDA DEFINITIVA 👇 */}
+
+      {/* 1. Muestra el loader como overlay SOLO para acciones del usuario */}
+      {isActionLoading && <FullScreenLoader />}
+
+      {/* 2. Muestra el loader de forma bloqueante en la carga inicial, 
+         o muestra la app si ya terminó. */}
+      {initialAuthLoading ? <FullScreenLoader /> : children}
     </AuthContext.Provider>
   );
 };

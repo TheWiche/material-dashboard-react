@@ -60,7 +60,14 @@ export default function App() {
 
   const filteredRoutes = useMemo(() => {
     // Estas son las rutas que SIEMPRE deben existir, sea cual sea el estado de autenticación.
-    const publicKeys = ["about-us", "blog", "license", "become-associate"];
+    const publicKeys = [
+      "about-us",
+      "blog",
+      "license",
+      "become-associate",
+      "privacy-policy",
+      "terms-of-service",
+    ];
 
     if (!userProfile) {
       // Si no hay usuario, solo permite las rutas públicas y las de autenticación.

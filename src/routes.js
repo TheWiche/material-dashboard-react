@@ -12,6 +12,9 @@ import SignUp from "layouts/authentication/sign-up";
 import AboutUs from "layouts/about-us";
 import Blog from "layouts/blog";
 import License from "layouts/license";
+import PrivacyPolicy from "layouts/privacy-policy";
+import TermsOfService from "layouts/terms-of-service";
+
 // Aquí irá la importación de BecomeAssociate en el futuro
 
 import GuestRoute from "components/GuestRoute";
@@ -132,6 +135,16 @@ const routes = [
   },
 
   // --- Rutas Públicas (Visibles para TODOS, pero no en el menú) ---
+  {
+    key: "privacy-policy",
+    route: "/politica-de-privacidad",
+    component: <PrivacyPolicy />, // No necesita protección
+  },
+  {
+    key: "terms-of-service",
+    route: "/terminos-y-condiciones",
+    component: <TermsOfService />, // No necesita protección
+  },
   {
     key: "about-us",
     route: "/sobre-nosotros",
