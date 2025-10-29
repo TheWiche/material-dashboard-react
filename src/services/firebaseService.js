@@ -11,6 +11,7 @@ import {
   browserLocalPersistence,
   GoogleAuthProvider,
   signInWithPopup,
+  getIdToken, // Se mantiene para las funciones de fetch
 } from "firebase/auth";
 import { getFirestore, doc, setDoc, serverTimestamp, getDoc } from "firebase/firestore";
 
@@ -24,10 +25,14 @@ const firebaseConfig = {
   measurementId: "G-66L288MXFS",
 };
 
+// --- INICIALIZACIÓN SIMPLE ---
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+// --- FIN DE LA INICIALIZACIÓN ---
 
+// 👇 FUNCIÓN registerUser SIMPLIFICADA
+// Ya no acepta 'navigate' ni 'setIsActionLoading'
 export const registerUser = async (name, email, password) => {
   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
   const user = userCredential.user;
@@ -39,9 +44,11 @@ export const registerUser = async (name, email, password) => {
     createdAt: serverTimestamp(),
   };
   await setDoc(doc(db, "users", user.uid), userProfile);
-  return userProfile;
+  return userProfile; // Devuelve el perfil
 };
 
+// 👇 FUNCIÓN loginUser SIMPLIFICADA
+// Ya no acepta 'navigate' ni 'setIsActionLoading'
 export const loginUser = async (email, password, rememberMe) => {
   const persistenceType = rememberMe ? browserLocalPersistence : browserSessionPersistence;
   await setPersistence(auth, persistenceType);
@@ -52,19 +59,20 @@ export const loginUser = async (email, password, rememberMe) => {
   const userDocSnap = await getDoc(userDocRef);
 
   if (userDocSnap.exists()) {
-    return userDocSnap.data();
+    return userDocSnap.data(); // Devuelve el perfil
   }
+  // Si no hay perfil, devuelve uno básico.
   return { uid: user.uid, email: user.email, name: user.email, role: "cliente" };
 };
+
+// --- EL RESTO DE FUNCIONES YA ESTÁN CORRECTAS ---
 
 export const signInWithGoogle = async () => {
   const provider = new GoogleAuthProvider();
   const result = await signInWithPopup(auth, provider);
   const user = result.user;
-
   const userDocRef = doc(db, "users", user.uid);
   const userDocSnap = await getDoc(userDocRef);
-
   if (!userDocSnap.exists()) {
     await setDoc(userDocRef, {
       uid: user.uid,
@@ -80,6 +88,116 @@ export const signInWithGoogle = async () => {
 
 export const logoutUser = () => {
   return signOut(auth);
+};
+
+export const callCreateUserRequest = async (userData) => {
+  try {
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error("No hay un usuario autenticado.");
+    }
+    const token = await getIdToken(user);
+    const functionUrl = "https://us-central1-goaltime-68101.cloudfunctions.net/createUser";
+
+    const response = await fetch(functionUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(userData),
+    });
+
+    const responseData = await response.json();
+    if (!response.ok) {
+      throw new Error(responseData.error || `HTTP error! status: ${response.status}`);
+    }
+    return responseData;
+  } catch (error) {
+    console.error("Error detallado al llamar a createUser (onRequest):", error);
+    throw new Error(error.message || "Error al conectar con la función.");
+  }
+};
+
+export const callCheckAuthContextRequest = async () => {
+  try {
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error("No hay un usuario autenticado.");
+    }
+    const token = await getIdToken(user);
+    const functionUrl = "https://us-central1-goaltime-68101.cloudfunctions.net/checkAuthContext";
+
+    const response = await fetch(functionUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const responseData = await response.json();
+    if (!response.ok) {
+      throw new Error(responseData.error || `HTTP error! status: ${response.status}`);
+    }
+    return responseData;
+  } catch (error) {
+    console.error("Error detallado al llamar a checkAuthContext (onRequest):", error);
+    throw new Error(error.message || "Error al verificar contexto (onRequest).");
+  }
+};
+
+export const callToggleUserStatusRequest = async (userId) => {
+  try {
+    const user = auth.currentUser;
+    if (!user) throw new Error("No autenticado.");
+    const token = await getIdToken(user);
+    const functionUrl = "https://us-central1-goaltime-68101.cloudfunctions.net/toggleUserStatus";
+
+    const response = await fetch(functionUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ userId }), // Envía el ID del usuario a modificar
+    });
+
+    const responseData = await response.json();
+    if (!response.ok) {
+      throw new Error(responseData.error || `HTTP error! status: ${response.status}`);
+    }
+    return responseData;
+  } catch (error) {
+    console.error("Error detallado al llamar a toggleUserStatus:", error);
+    throw new Error(error.message || "Error al cambiar estado del usuario.");
+  }
+};
+
+export const callSetUserRoleRequest = async (userId, newRole) => {
+  try {
+    const user = auth.currentUser;
+    if (!user) throw new Error("No autenticado.");
+    const token = await getIdToken(user);
+    const functionUrl = "https://us-central1-goaltime-68101.cloudfunctions.net/setUserRole";
+
+    const response = await fetch(functionUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ userId, newRole }),
+    });
+
+    const responseData = await response.json();
+    if (!response.ok) {
+      throw new Error(responseData.error || `HTTP error! status: ${response.status}`);
+    }
+    return responseData;
+  } catch (error) {
+    console.error("Error detallado al llamar a setUserRole:", error);
+    throw new Error(error.message || "Error al cambiar rol del usuario.");
+  }
 };
 
 export { auth, db };
