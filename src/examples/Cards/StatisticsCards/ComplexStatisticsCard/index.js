@@ -55,17 +55,58 @@ function ComplexStatisticsCard({ color, title, count, percentage, icon }) {
       </MDBox>
       <Divider />
       <MDBox pb={2} px={2}>
-        <MDTypography component="p" variant="button" color="text" display="flex">
-          <MDTypography
-            component="span"
-            variant="button"
-            fontWeight="bold"
-            color={percentage.color}
+        <MDBox display="flex" alignItems="center" justifyContent="space-between">
+          <MDBox>
+            <MDTypography
+              variant="caption"
+              color="text"
+              fontWeight="medium"
+              textTransform="uppercase"
+            >
+              {percentage.label || "Estado"}
+            </MDTypography>
+            {percentage.amount && (
+              <MDBox display="flex" alignItems="center" mt={0.5}>
+                <Icon
+                  sx={{
+                    fontSize: "1rem",
+                    color: percentage.color === "success" ? "success.main" : "warning.main",
+                    mr: 0.5,
+                  }}
+                >
+                  {percentage.amount === "+" ? "trending_up" : "info"}
+                </Icon>
+                <MDTypography
+                  variant="button"
+                  fontWeight="bold"
+                  color={percentage.color}
+                  sx={{ fontSize: "0.75rem" }}
+                >
+                  {percentage.amount}
+                </MDTypography>
+              </MDBox>
+            )}
+          </MDBox>
+          <MDBox
+            width="40px"
+            height="40px"
+            borderRadius="lg"
+            bgColor={percentage.color}
+            variant="gradient"
+            opacity={0.1}
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
           >
-            {percentage.amount}
-          </MDTypography>
-          &nbsp;{percentage.label}
-        </MDTypography>
+            <Icon sx={{ fontSize: "1.2rem", color: `${percentage.color}.main` }}>
+              {percentage.color === "success"
+                ? "check_circle"
+                : percentage.color === "warning"
+                ? "schedule"
+                : "info"}
+            </Icon>
+          </MDBox>
+        </MDBox>
       </MDBox>
     </Card>
   );

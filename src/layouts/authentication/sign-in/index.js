@@ -184,6 +184,18 @@ function Basic() {
                 &nbsp;&nbsp;Recuérdame
               </MDTypography>
             </MDBox>
+            <MDBox mt={2} mb={1} textAlign="right">
+              <MDTypography
+                component={Link}
+                to="/authentication/reset-password"
+                variant="button"
+                color="text"
+                fontWeight="regular"
+                sx={{ textDecoration: "none", "&:hover": { textDecoration: "underline" } }}
+              >
+                ¿Olvidaste tu contraseña?
+              </MDTypography>
+            </MDBox>
             <MDBox mt={4} mb={1}>
               <MDButton type="submit" variant="gradient" color="info" fullWidth>
                 iniciar sesión

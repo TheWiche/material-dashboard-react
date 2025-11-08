@@ -13,7 +13,7 @@ Coded by www.creative-tim.com
 * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 */
 
-import { useMemo } from "react";
+import { useMemo, useRef, useEffect, useState } from "react";
 
 // porp-types is a library for typechecking of props
 import PropTypes from "prop-types";
@@ -46,46 +46,68 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 
 function ReportsBarChart({ color, title, description, date, chart }) {
   const { data, options } = configs(chart.labels || [], chart.datasets || {});
+  const hasAnimated = useRef(false);
+  const [disableAnimation, setDisableAnimation] = useState(false);
+
+  useEffect(() => {
+    // Permitir que la animación se ejecute una vez, luego desactivarla
+    const timer = setTimeout(() => {
+      hasAnimated.current = true;
+      setDisableAnimation(true);
+    }, 2100); // Un poco más que la duración de la animación (2000ms)
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  const chartOptions = useMemo(() => {
+    if (disableAnimation) {
+      return {
+        ...options,
+        animation: {
+          duration: 0,
+        },
+      };
+    }
+    return options;
+  }, [options, disableAnimation]);
 
   return (
-    <Card sx={{ height: "100%" }}>
-      <MDBox padding="1rem">
-        {useMemo(
-          () => (
-            <MDBox
-              variant="gradient"
-              bgColor={color}
-              borderRadius="lg"
-              coloredShadow={color}
-              py={2}
-              pr={0.5}
-              mt={-5}
-              height="12.5rem"
-            >
-              <Bar data={data} options={options} redraw />
-            </MDBox>
-          ),
-          [color, chart]
-        )}
-        <MDBox pt={3} pb={1} px={1}>
-          <MDTypography variant="h6" textTransform="capitalize">
-            {title}
-          </MDTypography>
-          <MDTypography component="div" variant="button" color="text" fontWeight="light">
-            {description}
-          </MDTypography>
-          <Divider />
-          <MDBox display="flex" alignItems="center">
-            <MDTypography variant="button" color="text" lineHeight={1} sx={{ mt: 0.15, mr: 0.5 }}>
-              <Icon>schedule</Icon>
-            </MDTypography>
-            <MDTypography variant="button" color="text" fontWeight="light">
-              {date}
-            </MDTypography>
+    <MDBox>
+      {useMemo(
+        () => (
+          <MDBox
+            variant="gradient"
+            bgColor={color}
+            borderRadius="lg"
+            coloredShadow={color}
+            py={2}
+            pr={0.5}
+            height="12.5rem"
+            mb={2}
+          >
+            <Bar data={data} options={chartOptions} />
           </MDBox>
+        ),
+        [color, data, chartOptions]
+      )}
+      <MDBox>
+        <MDTypography variant="h6" textTransform="capitalize" mb={1}>
+          {title}
+        </MDTypography>
+        <MDTypography component="div" variant="button" color="text" fontWeight="light" mb={1}>
+          {description}
+        </MDTypography>
+        <Divider sx={{ my: 1 }} />
+        <MDBox display="flex" alignItems="center">
+          <MDTypography variant="button" color="text" lineHeight={1} sx={{ mt: 0.15, mr: 0.5 }}>
+            <Icon>schedule</Icon>
+          </MDTypography>
+          <MDTypography variant="button" color="text" fontWeight="light">
+            {date}
+          </MDTypography>
         </MDBox>
       </MDBox>
-    </Card>
+    </MDBox>
   );
 }
 

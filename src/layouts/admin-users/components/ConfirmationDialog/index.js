@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import { Dialog, DialogTitle, DialogContent, DialogActions, Typography } from "@mui/material";
 import MDButton from "components/MDButton";
 
-function ConfirmationDialog({ open, onClose, onConfirm, title, message }) {
+function ConfirmationDialog({ open, onClose, onConfirm, title, message, confirmColor = "error" }) {
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xs">
       <DialogTitle>{title}</DialogTitle>
@@ -12,12 +12,10 @@ function ConfirmationDialog({ open, onClose, onConfirm, title, message }) {
         <Typography variant="body2">{message}</Typography>
       </DialogContent>
       <DialogActions>
-        <MDButton onClick={onClose} color="secondary">
+        <MDButton onClick={onClose} color="secondary" variant="outlined">
           Cancelar
         </MDButton>
-        <MDButton onClick={onConfirm} color="error" variant="gradient">
-          {" "}
-          {/* Color error para acciones destructivas */}
+        <MDButton onClick={onConfirm} color={confirmColor} variant="gradient">
           Confirmar
         </MDButton>
       </DialogActions>
@@ -31,6 +29,15 @@ ConfirmationDialog.propTypes = {
   onConfirm: PropTypes.func.isRequired,
   title: PropTypes.string.isRequired,
   message: PropTypes.string.isRequired,
+  confirmColor: PropTypes.oneOf([
+    "error",
+    "success",
+    "info",
+    "warning",
+    "primary",
+    "secondary",
+    "dark",
+  ]),
 };
 
 export default ConfirmationDialog;

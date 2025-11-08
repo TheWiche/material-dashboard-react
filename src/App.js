@@ -72,20 +72,44 @@ export default function App() {
     if (!userProfile) {
       return routes.filter(
         (route) =>
-          publicKeys.includes(route.key) || route.key === "sign-in" || route.key === "sign-up"
+          publicKeys.includes(route.key) ||
+          route.key === "sign-in" ||
+          route.key === "sign-up" ||
+          route.key === "reset-password" ||
+          route.key === "confirm-reset-password"
       );
     }
 
     let userRoutes = routes.filter(
-      (route) => route.key !== "sign-in" && route.key !== "sign-up" && route.key !== "rtl"
+      (route) =>
+        route.key !== "sign-in" &&
+        route.key !== "sign-up" &&
+        route.key !== "rtl" &&
+        route.key !== "reset-password" &&
+        route.key !== "confirm-reset-password"
     );
 
     if (userProfile.role === "cliente") {
       userRoutes = userRoutes.filter(
-        (route) => route.key !== "dashboard" && route.key !== "admin-users"
+        (route) =>
+          route.key !== "dashboard" &&
+          route.key !== "admin-users" &&
+          route.key !== "admin-fields" &&
+          route.key !== "associate-fields" &&
+          route.key !== "associate-reservations"
       );
     } else if (userProfile.role === "asociado") {
-      userRoutes = userRoutes.filter((route) => route.key !== "admin-users");
+      userRoutes = userRoutes.filter(
+        (route) => route.key !== "admin-users" && route.key !== "admin-fields"
+      );
+    } else if (userProfile.role === "admin") {
+      // admin-fields ya no se muestra en el menú, la funcionalidad está en "Canchas"
+      userRoutes = userRoutes.filter(
+        (route) =>
+          route.key !== "associate-fields" &&
+          route.key !== "admin-fields" &&
+          route.key !== "associate-reservations"
+      );
     }
 
     return userRoutes;
@@ -97,7 +121,8 @@ export default function App() {
         return getRoutes(route.collapse);
       }
       if (route.route) {
-        return <Route exact path={route.route} element={route.component} key={route.key} />;
+        // React Router v6 no usa 'exact', las rutas se hacen coincidir automáticamente
+        return <Route path={route.route} element={route.component} key={route.key} />;
       }
       return null;
     });

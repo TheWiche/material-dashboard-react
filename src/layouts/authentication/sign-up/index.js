@@ -27,6 +27,7 @@ import bgImage from "assets/images/bg-sign-up-cover.png";
 
 // Importamos nuestra función de registro desde el servicio
 import { registerUser } from "services/firebaseService";
+import { useAuth } from "context/AuthContext";
 
 const getFriendlyErrorMessage = (errorCode) => {
   switch (errorCode) {
@@ -74,10 +75,12 @@ function Cover() {
   const [showPassword, setShowPassword] = useState(false);
   const [strength, setStrength] = useState({ value: 0, color: "error", label: "" });
   const [isLoading, setIsLoading] = useState(false);
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const navigate = useNavigate();
   const [errorSB, setErrorSB] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [jokeSB, setJokeSB] = useState(false);
+  const { userProfile, initialAuthLoading } = useAuth();
 
   const openErrorSB = () => setErrorSB(true);
   const closeErrorSB = () => setErrorSB(false);
@@ -87,6 +90,18 @@ function Cover() {
   useEffect(() => {
     setStrength(calculatePasswordStrength(password));
   }, [password]);
+
+  // Efecto para redirigir cuando el usuario esté autenticado y el perfil esté cargado
+  useEffect(() => {
+    if (registrationSuccess && !initialAuthLoading && userProfile) {
+      // Esperar un momento adicional para asegurar que todo esté listo
+      const timer = setTimeout(() => {
+        setIsLoading(false);
+        navigate("/canchas");
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [userProfile, initialAuthLoading, navigate, registrationSuccess]);
 
   const handleRegister = async (event) => {
     event.preventDefault();
@@ -102,14 +117,16 @@ function Cover() {
     }
 
     setIsLoading(true);
+    setRegistrationSuccess(false);
     try {
       await registerUser(name, email, password);
-      navigate("/canchas");
+      // Marcamos el registro como exitoso y esperamos a que el AuthContext cargue el perfil
+      setRegistrationSuccess(true);
     } catch (error) {
       setErrorMessage(getFriendlyErrorMessage(error.code));
       openErrorSB();
-    } finally {
       setIsLoading(false);
+      setRegistrationSuccess(false);
     }
   };
 

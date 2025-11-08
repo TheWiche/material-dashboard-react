@@ -1,4 +1,4 @@
-// src/layouts/admin-users/index.js
+// src/layouts/associate-fields/index.js
 
 import { useState } from "react";
 import Grid from "@mui/material/Grid";
@@ -12,57 +12,54 @@ import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
 import DashboardNavbar from "examples/Navbars/DashboardNavbar";
 import Footer from "examples/Footer";
 import DataTable from "examples/Tables/DataTable";
-import useUsersTableData from "layouts/admin-users/data/usersTableData";
-import TableToolbar from "layouts/admin-users/components/TableToolbar"; // Importa el toolbar correcto
-import AddUserModal from "layouts/admin-users/components/AddUserModal";
-import EditUserRoleModal from "layouts/admin-users/components/EditUserRoleModal";
-import ConfirmationDialog from "layouts/admin-users/components/ConfirmationDialog";
+import useFieldsTableData from "layouts/associate-fields/data/fieldsTableData";
+import TableToolbar from "layouts/associate-fields/components/TableToolbar";
+import AddFieldModal from "layouts/associate-fields/components/AddFieldModal";
+import EditFieldModal from "layouts/associate-fields/components/EditFieldModal";
 import { CircularProgress } from "@mui/material";
-import {
-  callCreateUserRequest,
-  callToggleUserStatusRequest,
-  callSetUserRoleRequest,
-} from "services/firebaseService";
+import { createField, updateField, toggleFieldStatus } from "services/firebaseService";
+import ConfirmationDialog from "layouts/admin-users/components/ConfirmationDialog";
 
-function AdminUsers() {
+function AssociateFields() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [roleFilter, setRoleFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [userToEdit, setUserToEdit] = useState(null);
+  const [fieldToEdit, setFieldToEdit] = useState(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const [userToToggle, setUserToToggle] = useState(null);
+  const [fieldToToggle, setFieldToToggle] = useState(null);
   const [confirmActionText, setConfirmActionText] = useState("");
   const [loadingAction, setLoadingAction] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, color: "info", message: "" });
-  const [pageSize, setPageSize] = useState(10); // Estado para el tamaño de página
-  const entriesOptions = [10, 25, 50]; // Opciones
+  const [pageSize, setPageSize] = useState(10);
+  const entriesOptions = [10, 25, 50];
 
   // --- Manejadores de Modales y Acciones ---
-  const handleEditRole = (user) => {
-    setUserToEdit(user);
+  const handleEditField = (field) => {
+    setFieldToEdit(field);
     setIsEditModalOpen(true);
   };
+
   const handleCloseEditModal = () => {
     setIsEditModalOpen(false);
-    setUserToEdit(null);
+    setFieldToEdit(null);
   };
 
-  const handleToggleDisable = (user) => {
-    const actionText = user.status === "disabled" ? "habilitar" : "deshabilitar";
-    setUserToToggle(user);
+  const handleToggleDisable = (field) => {
+    const actionText = field.status === "disabled" ? "habilitar" : "deshabilitar";
+    setFieldToToggle(field);
     setConfirmActionText(actionText);
     setIsConfirmOpen(true);
   };
 
   const confirmToggleDisable = async () => {
-    if (!userToToggle) return;
+    if (!fieldToToggle) return;
     setIsConfirmOpen(false);
     setLoadingAction(true);
     try {
-      const result = await callToggleUserStatusRequest(userToToggle.id);
+      const result = await toggleFieldStatus(fieldToToggle.id);
       setSnackbar({ open: true, color: "success", message: result.message });
-      setUserToToggle(null);
+      setFieldToToggle(null);
     } catch (error) {
       setSnackbar({ open: true, color: "error", message: error.message });
     } finally {
@@ -71,10 +68,10 @@ function AdminUsers() {
   };
 
   // Hook de datos, pasando los manejadores de acción
-  const { columns, rows, loading } = useUsersTableData(
+  const { columns, rows, loading } = useFieldsTableData(
     searchTerm,
-    roleFilter,
-    handleEditRole,
+    statusFilter,
+    handleEditField,
     handleToggleDisable
   );
 
@@ -82,12 +79,12 @@ function AdminUsers() {
   const handleOpenAddModal = () => setIsAddModalOpen(true);
   const handleCloseAddModal = () => setIsAddModalOpen(false);
 
-  const handleCreateUser = async (userData) => {
+  const handleCreateField = async (fieldData) => {
     setLoadingAction(true);
     try {
-      const result = await callCreateUserRequest(userData);
+      await createField(fieldData);
       handleCloseAddModal();
-      setSnackbar({ open: true, color: "success", message: result.message });
+      setSnackbar({ open: true, color: "success", message: "Cancha creada exitosamente." });
     } catch (error) {
       setSnackbar({ open: true, color: "error", message: error.message });
     } finally {
@@ -95,12 +92,12 @@ function AdminUsers() {
     }
   };
 
-  const handleSaveRole = async (editedUser, newRole) => {
+  const handleUpdateField = async (fieldId, fieldData) => {
     setLoadingAction(true);
     try {
-      const result = await callSetUserRoleRequest(editedUser.id, newRole);
+      await updateField(fieldId, fieldData);
       handleCloseEditModal();
-      setSnackbar({ open: true, color: "success", message: result.message });
+      setSnackbar({ open: true, color: "success", message: "Cancha actualizada exitosamente." });
     } catch (error) {
       setSnackbar({ open: true, color: "error", message: error.message });
     } finally {
@@ -131,24 +128,24 @@ function AdminUsers() {
                 alignItems="center"
               >
                 <MDTypography variant="h6" color="white">
-                  Tabla de Usuarios
+                  Mis Canchas
                 </MDTypography>
                 <MDButton variant="gradient" color="dark" onClick={handleOpenAddModal}>
                   <Icon sx={{ fontWeight: "bold" }}>add</Icon>
-                  &nbsp;Crear Usuario
+                  &nbsp;Registrar Cancha
                 </MDButton>
               </MDBox>
 
-              {/* Barra de Herramientas con Todos los Controles */}
+              {/* Barra de Herramientas */}
               <TableToolbar
                 searchTerm={searchTerm}
                 onSearchChange={(e) => setSearchTerm(e.target.value)}
-                roleFilter={roleFilter}
-                onRoleChange={(newRole) => {
-                  if (newRole) setRoleFilter(newRole);
+                statusFilter={statusFilter}
+                onStatusChange={(newStatus) => {
+                  if (newStatus) setStatusFilter(newStatus);
                 }}
                 entriesPerPage={pageSize}
-                onEntriesChange={setPageSize} // Pasa la función 'setPageSize' directamente
+                onEntriesChange={setPageSize}
                 entriesOptions={entriesOptions}
               />
 
@@ -162,11 +159,10 @@ function AdminUsers() {
                   <DataTable
                     table={{ columns, rows }}
                     isSorted={false}
-                    entriesPerPage={false} // 👈 Desactiva los controles internos
+                    entriesPerPage={false}
                     showTotalEntries
                     noEndBorder
-                    canSearch={false} // 👈 Desactiva la búsqueda interna
-                    // 👇 Pasa el 'pageSize' para que react-table sepa cuántas filas mostrar
+                    canSearch={false}
                     initialState={{ pageSize: pageSize }}
                   />
                 )}
@@ -178,32 +174,32 @@ function AdminUsers() {
       <Footer />
 
       {/* Modales */}
-      <AddUserModal
+      <AddFieldModal
         open={isAddModalOpen}
         onClose={handleCloseAddModal}
-        onSubmit={handleCreateUser}
+        onSubmit={handleCreateField}
         loading={loadingAction}
       />
-      <EditUserRoleModal
+      <EditFieldModal
         open={isEditModalOpen}
         onClose={handleCloseEditModal}
-        onSubmit={handleSaveRole}
+        onSubmit={handleUpdateField}
         loading={loadingAction}
-        user={userToEdit}
+        field={fieldToEdit}
       />
       <ConfirmationDialog
         open={isConfirmOpen}
         onClose={() => {
           setIsConfirmOpen(false);
-          setUserToToggle(null);
+          setFieldToToggle(null);
         }}
         onConfirm={confirmToggleDisable}
         title={`Confirmar ${
           confirmActionText === "habilitar" ? "Habilitación" : "Deshabilitación"
         }`}
-        message={`¿Estás seguro de que quieres ${confirmActionText} a ${
-          userToToggle?.name || "este usuario"
-        }?`}
+        message={`¿Estás seguro de que quieres ${confirmActionText} la cancha "${
+          fieldToToggle?.name || "esta cancha"
+        }"?`}
         confirmColor={confirmActionText === "habilitar" ? "success" : "error"}
       />
 
@@ -211,7 +207,7 @@ function AdminUsers() {
       <MDSnackbar
         color={snackbar.color}
         icon={snackbar.color === "success" ? "check" : "warning"}
-        title="Gestión de Usuarios"
+        title="Gestión de Canchas"
         content={snackbar.message}
         open={snackbar.open}
         onClose={closeSnackbar}
@@ -222,4 +218,4 @@ function AdminUsers() {
   );
 }
 
-export default AdminUsers;
+export default AssociateFields;

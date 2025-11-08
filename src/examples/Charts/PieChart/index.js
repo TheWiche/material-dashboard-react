@@ -13,7 +13,7 @@ Coded by www.creative-tim.com
 * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 */
 
-import { useMemo } from "react";
+import { useMemo, useRef, useEffect, useState } from "react";
 
 // porp-types is a library for typechecking of props
 import PropTypes from "prop-types";
@@ -37,6 +37,32 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 
 function PieChart({ icon, title, description, height, chart }) {
   const { data, options } = configs(chart.labels || [], chart.datasets || {});
+  const hasAnimated = useRef(false);
+  const [disableAnimation, setDisableAnimation] = useState(false);
+
+  useEffect(() => {
+    // Permitir que la animación se ejecute una vez, luego desactivarla
+    const timer = setTimeout(() => {
+      hasAnimated.current = true;
+      setDisableAnimation(true);
+    }, 2100); // Un poco más que la duración de la animación (2000ms)
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  const chartOptions = useMemo(() => {
+    if (disableAnimation) {
+      return {
+        ...options,
+        animation: {
+          animateRotate: false,
+          animateScale: false,
+          duration: 0,
+        },
+      };
+    }
+    return options;
+  }, [options, disableAnimation]);
 
   const renderChart = (
     <MDBox py={2} pr={2} pl={icon.component ? 1 : 2}>
@@ -73,10 +99,10 @@ function PieChart({ icon, title, description, height, chart }) {
       {useMemo(
         () => (
           <MDBox height={height}>
-            <Pie data={data} options={options} redraw />
+            <Pie data={data} options={chartOptions} />
           </MDBox>
         ),
-        [chart, height]
+        [data, chartOptions, height]
       )}
     </MDBox>
   );

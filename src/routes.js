@@ -2,13 +2,15 @@
 
 import Dashboard from "layouts/dashboard";
 import AdminUsers from "layouts/admin-users";
+import AdminFields from "layouts/admin-fields";
+import AssociateFields from "layouts/associate-fields";
+import AssociateReservations from "layouts/associate-reservations";
 import Canchas from "layouts/canchas";
-import Tables from "layouts/tables";
-import Billing from "layouts/billing";
-import Notifications from "layouts/notifications";
 import Profile from "layouts/profile";
 import SignIn from "layouts/authentication/sign-in";
 import SignUp from "layouts/authentication/sign-up";
+import ResetPassword from "layouts/authentication/reset-password/cover";
+import ConfirmResetPassword from "layouts/authentication/reset-password/confirm";
 import AboutUs from "layouts/about-us";
 import Blog from "layouts/blog";
 import License from "layouts/license";
@@ -49,6 +51,43 @@ const routes = [
       </ProtectedRoute>
     ),
   },
+  // Ruta "Aprobar Canchas" eliminada - La funcionalidad está integrada en "Canchas"
+  // {
+  //   type: "collapse",
+  //   name: "Aprobar Canchas",
+  //   key: "admin-fields",
+  //   icon: <Icon fontSize="small">check_circle</Icon>,
+  //   route: "/admin/fields",
+  //   component: (
+  //     <ProtectedRoute>
+  //       <AdminFields />
+  //     </ProtectedRoute>
+  //   ),
+  // },
+  {
+    type: "collapse",
+    name: "Mis Canchas",
+    key: "associate-fields",
+    icon: <Icon fontSize="small">stadium</Icon>,
+    route: "/associate/fields",
+    component: (
+      <ProtectedRoute>
+        <AssociateFields />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    type: "collapse",
+    name: "Mis Reservas",
+    key: "associate-reservations",
+    icon: <Icon fontSize="small">event</Icon>,
+    route: "/associate/reservations",
+    component: (
+      <ProtectedRoute>
+        <AssociateReservations />
+      </ProtectedRoute>
+    ),
+  },
   {
     type: "collapse",
     name: "Canchas",
@@ -58,42 +97,6 @@ const routes = [
     component: (
       <ProtectedRoute>
         <Canchas />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    type: "collapse",
-    name: "Tables",
-    key: "tables",
-    icon: <Icon fontSize="small">table_view</Icon>,
-    route: "/tables",
-    component: (
-      <ProtectedRoute>
-        <Tables />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    type: "collapse",
-    name: "Billing",
-    key: "billing",
-    icon: <Icon fontSize="small">receipt_long</Icon>,
-    route: "/billing",
-    component: (
-      <ProtectedRoute>
-        <Billing />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    type: "collapse",
-    name: "Notifications",
-    key: "notifications",
-    icon: <Icon fontSize="small">notifications</Icon>,
-    route: "/notifications",
-    component: (
-      <ProtectedRoute>
-        <Notifications />
       </ProtectedRoute>
     ),
   },
@@ -131,6 +134,24 @@ const routes = [
     component: (
       <GuestRoute>
         <SignUp />
+      </GuestRoute>
+    ),
+  },
+  {
+    key: "reset-password",
+    route: "/authentication/reset-password",
+    component: (
+      <GuestRoute>
+        <ResetPassword />
+      </GuestRoute>
+    ),
+  },
+  {
+    key: "confirm-reset-password",
+    route: "/authentication/reset-password/confirm",
+    component: (
+      <GuestRoute>
+        <ConfirmResetPassword />
       </GuestRoute>
     ),
   },

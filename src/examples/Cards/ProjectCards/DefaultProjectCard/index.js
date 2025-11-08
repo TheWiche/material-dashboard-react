@@ -23,14 +23,65 @@ import PropTypes from "prop-types";
 import Card from "@mui/material/Card";
 import CardMedia from "@mui/material/CardMedia";
 import Tooltip from "@mui/material/Tooltip";
+import Chip from "@mui/material/Chip";
 
 // GoalTime App components
 import MDBox from "components/MDBox";
 import MDTypography from "components/MDTypography";
 import MDButton from "components/MDButton";
 import MDAvatar from "components/MDAvatar";
+import Icon from "@mui/material/Icon";
 
 function DefaultProjectCard({ image, label, title, description, action, authors }) {
+  // Funciones helper para el estado
+  const getStatusColor = (status) => {
+    const statusLower = status?.toLowerCase() || "";
+    switch (statusLower) {
+      case "approved":
+        return "success";
+      case "pending":
+        return "warning";
+      case "disabled":
+        return "error";
+      case "rejected":
+        return "error";
+      default:
+        return "default";
+    }
+  };
+
+  const getStatusText = (status) => {
+    const statusLower = status?.toLowerCase() || "";
+    switch (statusLower) {
+      case "approved":
+        return "Aprobada";
+      case "pending":
+        return "Pendiente";
+      case "disabled":
+        return "Deshabilitada";
+      case "rejected":
+        return "Rechazada";
+      default:
+        return status || "Sin estado";
+    }
+  };
+
+  const getStatusIcon = (status) => {
+    const statusLower = status?.toLowerCase() || "";
+    switch (statusLower) {
+      case "approved":
+        return "check_circle";
+      case "pending":
+        return "schedule";
+      case "disabled":
+        return "block";
+      case "rejected":
+        return "cancel";
+      default:
+        return "info";
+    }
+  };
+
   const renderAuthors = authors.map(({ image: media, name }) => (
     <Tooltip key={name} title={name} placement="bottom">
       <MDAvatar
@@ -59,26 +110,68 @@ function DefaultProjectCard({ image, label, title, description, action, authors 
         backgroundColor: "transparent",
         boxShadow: "none",
         overflow: "visible",
+        height: "100%",
       }}
     >
-      <MDBox position="relative" width="100.25%" shadow="xl" borderRadius="xl">
+      <MDBox
+        position="relative"
+        width="100.25%"
+        shadow="xl"
+        borderRadius="xl"
+        sx={{
+          height: "200px",
+          minHeight: "200px",
+          maxHeight: "200px",
+          width: "100%",
+          overflow: "hidden",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "grey.200",
+          position: "relative",
+        }}
+      >
         <CardMedia
-          src={image}
+          src={image || "https://via.placeholder.com/400x200?text=Sin+Imagen"}
           component="img"
           title={title}
+          onError={(e) => {
+            if (e.target.src !== "https://via.placeholder.com/400x200?text=Sin+Imagen") {
+              e.target.src = "https://via.placeholder.com/400x200?text=Sin+Imagen";
+            }
+          }}
           sx={{
-            maxWidth: "100%",
+            width: "100%",
+            height: "200px",
+            minHeight: "200px",
+            maxHeight: "200px",
             margin: 0,
+            padding: 0,
             boxShadow: ({ boxShadows: { md } }) => md,
             objectFit: "cover",
             objectPosition: "center",
+            display: "block",
+            flexShrink: 0,
           }}
         />
       </MDBox>
       <MDBox mt={1} mx={0.5}>
-        <MDTypography variant="button" fontWeight="regular" color="text" textTransform="capitalize">
-          {label}
-        </MDTypography>
+        <MDBox mb={1.5} display="flex" alignItems="center">
+          <Chip
+            label={getStatusText(label)}
+            color={getStatusColor(label)}
+            icon={<Icon fontSize="small">{getStatusIcon(label)}</Icon>}
+            size="small"
+            sx={{
+              fontWeight: "bold",
+              fontSize: "0.7rem",
+              height: "24px",
+              "& .MuiChip-icon": {
+                fontSize: "0.9rem",
+              },
+            }}
+          />
+        </MDBox>
         <MDBox mb={1}>
           {action.type === "internal" ? (
             <MDTypography
@@ -118,6 +211,10 @@ function DefaultProjectCard({ image, label, title, description, action, authors 
             >
               {action.label}
             </MDButton>
+          ) : action.type === "button" ? (
+            <MDButton onClick={action.onClick} variant="outlined" size="small" color={action.color}>
+              {action.label}
+            </MDButton>
           ) : (
             <MDButton
               component="a"
@@ -150,8 +247,9 @@ DefaultProjectCard.propTypes = {
   title: PropTypes.string.isRequired,
   description: PropTypes.string.isRequired,
   action: PropTypes.shape({
-    type: PropTypes.oneOf(["external", "internal"]),
-    route: PropTypes.string.isRequired,
+    type: PropTypes.oneOf(["external", "internal", "button"]),
+    route: PropTypes.string,
+    onClick: PropTypes.func,
     color: PropTypes.oneOf([
       "primary",
       "secondary",

@@ -1,21 +1,23 @@
 // src/components/GuestRoute.js
 
 import React from "react";
-// 👇 Se elimina la importación de 'Navigate'
+import { Navigate } from "react-router-dom";
 import { useAuth } from "context/AuthContext";
 import PropTypes from "prop-types";
 
 function GuestRoute({ children }) {
-  const { currentUser } = useAuth();
+  const { currentUser, userProfile } = useAuth();
 
-  // 👇 LÓGICA CORREGIDA
-  if (currentUser) {
-    // Si hay un usuario logueado, simplemente no renderices nada.
-    // La redirección principal ya fue ordenada por firebaseService.
-    return null;
+  // Si hay un usuario logueado, redirigir según su rol
+  if (currentUser && userProfile) {
+    if (userProfile.role === "cliente") {
+      return <Navigate to="/canchas" replace />;
+    } else {
+      return <Navigate to="/dashboard" replace />;
+    }
   }
 
-  // Si no hay usuario, muestra la página de login/registro.
+  // Si no hay usuario, muestra la página de login/registro/reset-password.
   return children;
 }
 

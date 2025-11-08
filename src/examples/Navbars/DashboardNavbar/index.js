@@ -19,6 +19,7 @@ import IconButton from "@mui/material/IconButton";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem"; // 👈 2. Se importa MenuItem
 import Icon from "@mui/material/Icon";
+import Avatar from "@mui/material/Avatar";
 import { Divider } from "@mui/material"; // Para el separador
 
 // GoalTime App components
@@ -30,7 +31,7 @@ import { useAuth } from "context/AuthContext"; // Para obtener los datos del usu
 
 // GoalTime App example components
 import Breadcrumbs from "examples/Breadcrumbs";
-import NotificationItem from "examples/Items/NotificationItem";
+import NotificationsMenu from "components/NotificationsMenu";
 
 // Custom styles for DashboardNavbar
 import {
@@ -42,12 +43,7 @@ import {
 } from "examples/Navbars/DashboardNavbar/styles";
 
 // GoalTime App context
-import {
-  useMaterialUIController,
-  setTransparentNavbar,
-  setMiniSidenav,
-  setOpenConfigurator,
-} from "context";
+import { useMaterialUIController, setTransparentNavbar, setMiniSidenav } from "context";
 
 // 👈 4. Se importa la función de logout
 import { logoutUser } from "services/firebaseService";
@@ -55,12 +51,7 @@ import { logoutUser } from "services/firebaseService";
 function DashboardNavbar({ absolute, light, isMini }) {
   const [navbarType, setNavbarType] = useState();
   const [controller, dispatch] = useMaterialUIController();
-  const { miniSidenav, transparentNavbar, fixedNavbar, openConfigurator, darkMode } = controller;
-
-  // Estados para el menú de notificaciones
-  const [openMenu, setOpenMenu] = useState(false);
-  const handleOpenMenu = (event) => setOpenMenu(event.currentTarget);
-  const handleCloseMenu = () => setOpenMenu(false);
+  const { miniSidenav, transparentNavbar, fixedNavbar, darkMode } = controller;
 
   // 👈 5. Se añaden estados y manejadores para el NUEVO menú de cuenta
   const [openAccountMenu, setOpenAccountMenu] = useState(false);
@@ -98,28 +89,12 @@ function DashboardNavbar({ absolute, light, isMini }) {
   }, [dispatch, fixedNavbar]);
 
   const handleMiniSidenav = () => setMiniSidenav(dispatch, !miniSidenav);
-  const handleConfiguratorOpen = () => setOpenConfigurator(dispatch, !openConfigurator);
 
-  // Menú de notificaciones (sin cambios)
-  const renderMenu = () => (
-    <Menu
-      anchorEl={openMenu}
-      anchorReference={null}
-      anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-      open={Boolean(openMenu)}
-      onClose={handleCloseMenu}
-      sx={{ mt: 2 }}
-    >
-      <NotificationItem icon={<Icon>email</Icon>} title="Check new messages" />
-      <NotificationItem icon={<Icon>podcasts</Icon>} title="Manage Podcast sessions" />
-      <NotificationItem icon={<Icon>shopping_cart</Icon>} title="Payment successfully completed" />
-    </Menu>
-  );
+  // 👈 8. Obtenemos el perfil del usuario desde el contexto
+  const { userProfile } = useAuth();
 
-  // 👈 8. Se crea la función para renderizar el NUEVO menú de cuenta
+  // 👈 9. Se crea la función para renderizar el NUEVO menú de cuenta
   const renderAccountMenu = () => {
-    const { userProfile } = useAuth(); // Obtenemos el perfil del usuario desde el contexto
-
     return (
       <Menu
         anchorEl={openAccountMenu}
@@ -189,22 +164,12 @@ function DashboardNavbar({ absolute, light, isMini }) {
       sx={(theme) => navbar(theme, { transparentNavbar, absolute, light, darkMode })}
     >
       <Toolbar sx={(theme) => navbarContainer(theme)}>
-        <MDBox color="inherit" mb={{ xs: 1, md: 0 }} sx={(theme) => navbarRow(theme, { isMini })}>
+        <MDBox color="inherit" sx={(theme) => navbarRow(theme, { isMini })} py={{ xs: 1.5, md: 2 }}>
           <Breadcrumbs icon="home" title={route[route.length - 1]} route={route} light={light} />
         </MDBox>
         {isMini ? null : (
           <MDBox sx={(theme) => navbarRow(theme, { isMini })}>
-            <MDBox color={light ? "white" : "inherit"}>
-              {/* 👇 9. Se modifica el botón de cuenta para que abra el menú */}
-              <IconButton
-                sx={navbarIconButton}
-                size="small"
-                disableRipple
-                onClick={handleOpenAccountMenu} // Se le asigna el manejador correcto
-              >
-                <Icon sx={iconsStyle}>account_circle</Icon>
-              </IconButton>
-              {/* Fin de la modificación */}
+            <MDBox color={light ? "white" : "inherit"} display="flex" alignItems="center" gap={1}>
               <IconButton
                 size="small"
                 disableRipple
@@ -216,28 +181,18 @@ function DashboardNavbar({ absolute, light, isMini }) {
                   {miniSidenav ? "menu_open" : "menu"}
                 </Icon>
               </IconButton>
-              <IconButton
-                size="small"
-                disableRipple
-                color="inherit"
-                sx={navbarIconButton}
-                onClick={handleConfiguratorOpen}
-              >
-                <Icon sx={iconsStyle}>settings</Icon>
+              {/* Componente de Notificaciones */}
+              <NotificationsMenu />
+              {/* 👇 Avatar del usuario como en la página de inicio */}
+              <IconButton onClick={handleOpenAccountMenu} sx={{ p: 0 }}>
+                <Avatar
+                  src={userProfile?.photoURL || ""}
+                  alt={userProfile?.name || "Usuario"}
+                  sx={{ width: 48, height: 48 }}
+                >
+                  {userProfile?.name ? userProfile.name[0].toUpperCase() : "U"}
+                </Avatar>
               </IconButton>
-              <IconButton
-                size="small"
-                disableRipple
-                color="inherit"
-                sx={navbarIconButton}
-                aria-controls="notification-menu"
-                aria-haspopup="true"
-                variant="contained"
-                onClick={handleOpenMenu}
-              >
-                <Icon sx={iconsStyle}>notifications</Icon>
-              </IconButton>
-              {renderMenu()}
               {renderAccountMenu()} {/* 👈 10. Se renderiza el nuevo menú */}
             </MDBox>
           </MDBox>

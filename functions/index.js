@@ -152,17 +152,21 @@ exports.toggleUserStatus = functions.https.onRequest(async (request, response) =
 
 exports.setUserRole = functions.https.onRequest(async (request, response) => {
   cors(request, response, async () => {
-    // ... (Verificaciones de método POST, token, y rol de admin, igual que en toggleUserStatus) ...
-    let decodedToken; /* ... */
-    if (!idToken)
-      /* ... */
-      try {
-        decodedToken = await admin.auth().verifyIdToken(idToken);
-      } catch (e) {
-        /* ... */
-      }
+    if (request.method !== "POST") {
+      return response.status(405).send({ error: "Method Not Allowed" });
+    }
+
+    let decodedToken;
+    const idToken = request.headers.authorization?.split("Bearer ")[1];
+    if (!idToken) return response.status(401).send({ error: "Unauthorized: No token." });
+    try {
+      decodedToken = await admin.auth().verifyIdToken(idToken);
+    } catch (error) {
+      return response.status(401).send({ error: "Unauthorized: Invalid token." });
+    }
+
     if (decodedToken.role !== "admin") {
-      /* ... */
+      return response.status(403).send({ error: "Forbidden: Admin role required." });
     }
 
     const { userId, newRole } = request.body;
@@ -174,6 +178,32 @@ exports.setUserRole = functions.https.onRequest(async (request, response) => {
     const allowedRoles = ["admin", "asociado", "cliente"];
     if (!allowedRoles.includes(newRole)) {
       return response.status(400).send({ error: "Bad Request: Invalid role specified." });
+    }
+
+    // ID del super administrador (único que puede cambiar roles de otros admins)
+    const SUPER_ADMIN_ID = "roFWFs8Iq5MCzJ9tyn1zk0u5GnY2";
+
+    // Verificar si el usuario objetivo es un administrador
+    try {
+      const targetUserDoc = await admin.firestore().collection("users").doc(userId).get();
+      const targetUserRole = targetUserDoc.exists ? targetUserDoc.data().role : null;
+
+      // Si el usuario objetivo es admin, solo el super admin puede cambiar su rol
+      if (targetUserRole === "admin" && decodedToken.uid !== SUPER_ADMIN_ID) {
+        return response.status(403).send({
+          error: "Forbidden: Only the super administrator can change roles of other administrators.",
+        });
+      }
+
+      // Si el usuario objetivo es admin y se intenta cambiar a otro rol, solo el super admin puede hacerlo
+      if (targetUserRole === "admin" && newRole !== "admin" && decodedToken.uid !== SUPER_ADMIN_ID) {
+        return response.status(403).send({
+          error: "Forbidden: Only the super administrator can remove admin role from other administrators.",
+        });
+      }
+    } catch (error) {
+      console.error("Error checking target user role:", error);
+      // Continuar con la validación si hay error al obtener el documento
     }
 
     // Evita que un admin se quite su propio rol (importante!)
@@ -192,8 +222,6 @@ exports.setUserRole = functions.https.onRequest(async (request, response) => {
         role: newRole,
       });
 
-      // Opcional: Forzar el refresco del token del usuario afectado (requiere más lógica)
-
       return response
         .status(200)
         .send({ success: true, message: `Rol de ${userId} actualizado a ${newRole}.` });
@@ -202,6 +230,161 @@ exports.setUserRole = functions.https.onRequest(async (request, response) => {
       return response
         .status(500)
         .send({ error: "Internal Server Error: Failed to set user role." });
+    }
+  });
+});
+
+// 👇 Función para aprobar o rechazar canchas (solo admin)
+exports.approveField = functions.https.onRequest(async (request, response) => {
+  cors(request, response, async () => {
+    if (request.method !== "POST") {
+      return response.status(405).send({ error: "Method Not Allowed" });
+    }
+
+    let decodedToken;
+    const idToken = request.headers.authorization?.split("Bearer ")[1];
+    if (!idToken) return response.status(401).send({ error: "Unauthorized: No token." });
+    try {
+      decodedToken = await admin.auth().verifyIdToken(idToken);
+    } catch (error) {
+      return response.status(401).send({ error: "Unauthorized: Invalid token." });
+    }
+
+    if (decodedToken.role !== "admin") {
+      return response.status(403).send({ error: "Forbidden: Admin role required." });
+    }
+
+    const { fieldId, action } = request.body;
+    if (!fieldId || !action) {
+      return response
+        .status(400)
+        .send({ error: "Bad Request: fieldId and action are required." });
+    }
+
+    if (action !== "approve" && action !== "reject") {
+      return response
+        .status(400)
+        .send({ error: "Bad Request: action must be 'approve' or 'reject'." });
+    }
+
+    try {
+      const fieldRef = admin.firestore().collection("canchas").doc(fieldId);
+      const fieldDoc = await fieldRef.get();
+
+      if (!fieldDoc.exists) {
+        return response.status(404).send({ error: "Not Found: Field does not exist." });
+      }
+
+      const newStatus = action === "approve" ? "approved" : "rejected";
+      const fieldData = fieldDoc.data();
+
+      await fieldRef.update({
+        status: newStatus,
+        reviewedAt: admin.firestore.FieldValue.serverTimestamp(),
+        reviewedBy: decodedToken.uid,
+      });
+
+      // Crear notificación para el dueño de la cancha
+      try {
+        const notificationData = {
+          userId: fieldData.ownerId,
+          type: action === "approve" ? "field_approved" : "field_rejected",
+          title: action === "approve" ? "Cancha Aprobada" : "Cancha Rechazada",
+          message:
+            action === "approve"
+              ? `Tu cancha "${fieldData.name}" ha sido aprobada y ahora está visible para los clientes.`
+              : `Tu cancha "${fieldData.name}" ha sido rechazada. Por favor, revisa la información y contacta al administrador si tienes dudas.`,
+          relatedId: fieldId,
+          actionUrl: "/associate/fields",
+          icon: action === "approve" ? "check_circle" : "cancel",
+          color: action === "approve" ? "success" : "error",
+          read: false,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+
+        await admin.firestore().collection("notifications").add(notificationData);
+      } catch (notificationError) {
+        console.error("Error al crear notificación:", notificationError);
+        // No fallar la operación principal si la notificación falla
+      }
+
+      const actionText = action === "approve" ? "aprobada" : "rechazada";
+      return response.status(200).send({
+        success: true,
+        message: `Cancha ${actionText} correctamente.`,
+      });
+    } catch (error) {
+      console.error("Error approving/rejecting field:", error);
+      return response
+        .status(500)
+        .send({ error: "Internal Server Error: Failed to process field." });
+    }
+  });
+});
+
+// 👇 Función para deshabilitar o habilitar canchas (asociado - solo su propia cancha)
+exports.toggleFieldStatus = functions.https.onRequest(async (request, response) => {
+  cors(request, response, async () => {
+    if (request.method !== "POST") {
+      return response.status(405).send({ error: "Method Not Allowed" });
+    }
+
+    let decodedToken;
+    const idToken = request.headers.authorization?.split("Bearer ")[1];
+    if (!idToken) return response.status(401).send({ error: "Unauthorized: No token." });
+    try {
+      decodedToken = await admin.auth().verifyIdToken(idToken);
+    } catch (error) {
+      return response.status(401).send({ error: "Unauthorized: Invalid token." });
+    }
+
+    // Verificar que sea asociado o admin
+    if (decodedToken.role !== "asociado" && decodedToken.role !== "admin") {
+      return response
+        .status(403)
+        .send({ error: "Forbidden: Associate or admin role required." });
+    }
+
+    const { fieldId } = request.body;
+    if (!fieldId) {
+      return response.status(400).send({ error: "Bad Request: fieldId is required." });
+    }
+
+    try {
+      const fieldRef = admin.firestore().collection("canchas").doc(fieldId);
+      const fieldDoc = await fieldRef.get();
+
+      if (!fieldDoc.exists) {
+        return response.status(404).send({ error: "Not Found: Field does not exist." });
+      }
+
+      const field = fieldDoc.data();
+
+      // Si no es admin, verificar que sea el dueño de la cancha
+      if (decodedToken.role !== "admin" && field.ownerId !== decodedToken.uid) {
+        return response
+          .status(403)
+          .send({ error: "Forbidden: You can only modify your own fields." });
+      }
+
+      // Cambiar el estado: si está disabled, cambiar a pending; si no, cambiar a disabled
+      const newStatus = field.status === "disabled" ? "pending" : "disabled";
+
+      await fieldRef.update({
+        status: newStatus,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      const actionText = newStatus === "disabled" ? "deshabilitada" : "habilitada";
+      return response.status(200).send({
+        success: true,
+        message: `Cancha ${actionText} correctamente.`,
+      });
+    } catch (error) {
+      console.error("Error toggling field status:", error);
+      return response
+        .status(500)
+        .send({ error: "Internal Server Error: Failed to update field status." });
     }
   });
 });
