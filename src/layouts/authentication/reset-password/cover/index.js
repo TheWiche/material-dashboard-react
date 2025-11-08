@@ -5,25 +5,18 @@
 */
 
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import Card from "@mui/material/Card";
-import Icon from "@mui/material/Icon";
-
-// GoalTime App components
+import { Link, useNavigate } from "react-router-dom";
+import { Box, IconButton } from "@mui/material";
+import InputAdornment from "@mui/material/InputAdornment";
+import { Email, ArrowBack, Help } from "@mui/icons-material";
 import MDBox from "components/MDBox";
 import MDTypography from "components/MDTypography";
 import MDInput from "components/MDInput";
 import MDButton from "components/MDButton";
 import MDSnackbar from "components/MDSnackbar";
 import { FullScreenLoader } from "components/FullScreenLoader";
-
-// Authentication layout components
-import CoverLayout from "layouts/authentication/components/CoverLayout";
-
-// Services
+import SplitScreenLayout from "layouts/authentication/components/SplitScreenLayout";
 import { sendPasswordReset } from "services/firebaseService";
-
-// Images
 import bgImage from "assets/images/bg-reset-cover.jpeg";
 
 function Cover() {
@@ -98,101 +91,211 @@ function Cover() {
 
   const closeSnackbar = () => setSnackbar({ ...snackbar, open: false });
 
-  return (
-    <CoverLayout coverHeight="50vh" image={bgImage}>
+  // Left Panel Content (50% - Architectural Image)
+  const leftContent = (
+    <MDBox
+      width="100%"
+      height="100%"
+      sx={{
+        backgroundImage: `url(${bgImage})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }}
+    />
+  );
+
+  // Right Panel Content (50% - White Form)
+  const rightContent = (
+    <MDBox
+      width="100%"
+      height="100%"
+      display="flex"
+      flexDirection="column"
+      justifyContent="center"
+      px={{ xs: 3, sm: 6, md: 8 }}
+      py={4}
+      sx={{ position: "relative" }}
+    >
       {isLoading && <FullScreenLoader />}
-      <Card>
-        <MDBox
-          variant="gradient"
-          bgColor="info"
-          borderRadius="lg"
-          coloredShadow="success"
-          mx={2}
-          mt={-3}
-          py={2}
-          mb={1}
-          textAlign="center"
-        >
-          <MDTypography variant="h3" fontWeight="medium" color="white" mt={1}>
-            Restablecer Contraseña
-          </MDTypography>
-          <MDTypography display="block" variant="button" color="white" my={1}>
-            {emailSent
-              ? "Revisa tu correo electrónico"
-              : "Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña"}
+
+      {/* Help Icon - Bottom Right */}
+      <IconButton
+        component={Link}
+        to="/sobre-nosotros"
+        sx={{
+          position: "absolute",
+          bottom: 24,
+          right: 24,
+          backgroundColor: "grey.800",
+          color: "white",
+          width: 40,
+          height: 40,
+          "&:hover": {
+            backgroundColor: "grey.700",
+          },
+        }}
+      >
+        <Help />
+      </IconButton>
+
+      {/* Form Content */}
+      <MDBox maxWidth="480px" mx="auto" width="100%">
+        {/* Back to Login Link */}
+        <MDBox mb={4}>
+          <MDTypography
+            component={Link}
+            to="/authentication/sign-in"
+            variant="body2"
+            color="text"
+            sx={{
+              textDecoration: "none",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 1,
+              "&:hover": {
+                textDecoration: "underline",
+              },
+            }}
+          >
+            <ArrowBack sx={{ fontSize: "1rem" }} />
+            Volver al inicio de sesión
           </MDTypography>
         </MDBox>
-        <MDBox pt={4} pb={3} px={3}>
-          {emailSent ? (
-            <MDBox>
-              <MDBox textAlign="center" mb={3}>
-                <Icon sx={{ fontSize: "4rem", color: "success.main", mb: 2 }}>check_circle</Icon>
-                <MDTypography variant="h6" fontWeight="bold" mb={1}>
-                  Correo Enviado
-                </MDTypography>
-                <MDTypography variant="body2" color="text">
-                  Hemos enviado un correo electrónico a <strong>{email}</strong> con las
-                  instrucciones para restablecer tu contraseña.
-                </MDTypography>
-                <MDTypography variant="body2" color="text" mt={2}>
-                  Si no lo encuentras, revisa tu carpeta de spam.
-                </MDTypography>
-              </MDBox>
-              <MDBox mt={4} mb={1}>
-                <MDButton
+
+        <MDTypography variant="h3" fontWeight="bold" color="dark" mb={1}>
+          Restablecer Contraseña
+        </MDTypography>
+        <MDTypography variant="body2" color="text" mb={4}>
+          Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña
+        </MDTypography>
+
+        {emailSent ? (
+          <MDBox>
+            <MDBox textAlign="center" mb={3}>
+              <MDTypography variant="h6" fontWeight="bold" mb={1} color="success.main">
+                ✓ Correo Enviado
+              </MDTypography>
+              <MDTypography variant="body2" color="text" mb={2}>
+                Hemos enviado un correo electrónico a <strong>{email}</strong> con las instrucciones
+                para restablecer tu contraseña.
+              </MDTypography>
+              <MDTypography variant="body2" color="text.secondary">
+                Si no lo encuentras, revisa tu carpeta de spam.
+              </MDTypography>
+            </MDBox>
+            <MDButton
+              component={Link}
+              to="/authentication/sign-in"
+              variant="contained"
+              fullWidth
+              sx={{
+                backgroundColor: (theme) => theme.palette.goaltime.main,
+                color: "white",
+                py: 1.5,
+                mb: 3,
+                textTransform: "none",
+                fontSize: "1rem",
+                fontWeight: "medium",
+                "&:hover": {
+                  backgroundColor: (theme) => theme.palette.goaltime.dark,
+                },
+              }}
+            >
+              Volver a Iniciar Sesión
+            </MDButton>
+          </MDBox>
+        ) : (
+          <MDBox component="form" onSubmit={handleSubmit}>
+            {/* Email Input */}
+            <MDBox mb={4}>
+              <MDTypography
+                variant="caption"
+                color="text"
+                fontWeight="medium"
+                mb={1}
+                display="block"
+              >
+                Correo Electrónico
+              </MDTypography>
+              <MDInput
+                type="email"
+                placeholder="nombre@ejemplo.com"
+                fullWidth
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    backgroundColor: "grey.100",
+                    "& fieldset": {
+                      borderColor: "grey.300",
+                    },
+                    "&:hover fieldset": {
+                      borderColor: "grey.400",
+                    },
+                  },
+                }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Email sx={{ color: "text.secondary" }} />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </MDBox>
+
+            {/* Submit Button */}
+            <MDButton
+              type="submit"
+              variant="contained"
+              fullWidth
+              disabled={isLoading}
+              sx={{
+                backgroundColor: (theme) => theme.palette.goaltime.main,
+                color: "white",
+                py: 1.5,
+                mb: 3,
+                textTransform: "none",
+                fontSize: "1rem",
+                fontWeight: "medium",
+                "&:hover": {
+                  backgroundColor: (theme) => theme.palette.goaltime.dark,
+                },
+                "&:disabled": {
+                  backgroundColor: "grey.300",
+                  color: "grey.500",
+                },
+              }}
+            >
+              {isLoading ? "Enviando..." : "Enviar Enlace de Restablecimiento"}
+            </MDButton>
+
+            {/* Sign In Link */}
+            <MDBox textAlign="center">
+              <MDTypography variant="body2" color="text">
+                ¿Recordaste tu contraseña?{" "}
+                <MDTypography
                   component={Link}
                   to="/authentication/sign-in"
-                  variant="gradient"
-                  color="info"
-                  fullWidth
+                  variant="body2"
+                  sx={{
+                    color: (theme) => theme.palette.goaltime.main,
+                    fontWeight: "bold",
+                    textDecoration: "none",
+                    "&:hover": {
+                      textDecoration: "underline",
+                    },
+                  }}
                 >
-                  Volver a Iniciar Sesión
-                </MDButton>
-              </MDBox>
-            </MDBox>
-          ) : (
-            <MDBox component="form" role="form" onSubmit={handleSubmit}>
-              <MDBox mb={4}>
-                <MDInput
-                  type="email"
-                  label="Correo Electrónico"
-                  variant="standard"
-                  fullWidth
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </MDBox>
-              <MDBox mt={6} mb={1}>
-                <MDButton
-                  type="submit"
-                  variant="gradient"
-                  color="info"
-                  fullWidth
-                  disabled={isLoading}
-                >
-                  {isLoading ? "Enviando..." : "Enviar Enlace de Restablecimiento"}
-                </MDButton>
-              </MDBox>
-              <MDBox mt={3} mb={1} textAlign="center">
-                <MDTypography variant="button" color="text">
-                  ¿Recordaste tu contraseña?{" "}
-                  <MDTypography
-                    component={Link}
-                    to="/authentication/sign-in"
-                    variant="button"
-                    color="info"
-                    fontWeight="medium"
-                    textGradient
-                  >
-                    Iniciar Sesión
-                  </MDTypography>
+                  Iniciar Sesión
                 </MDTypography>
-              </MDBox>
+              </MDTypography>
             </MDBox>
-          )}
-        </MDBox>
-      </Card>
+          </MDBox>
+        )}
+      </MDBox>
 
       <MDSnackbar
         color={snackbar.color}
@@ -206,7 +309,16 @@ function Cover() {
         close={closeSnackbar}
         bgWhite={snackbar.color !== "info" && snackbar.color !== "dark"}
       />
-    </CoverLayout>
+    </MDBox>
+  );
+
+  return (
+    <SplitScreenLayout
+      leftContent={leftContent}
+      rightContent={rightContent}
+      leftWidth="50%"
+      rightWidth="50%"
+    />
   );
 }
 

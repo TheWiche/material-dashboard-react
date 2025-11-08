@@ -9,29 +9,15 @@ import useDebounce from "hooks/useDebounce";
 import MDBox from "components/MDBox";
 import MDTypography from "components/MDTypography";
 import MDAvatar from "components/MDAvatar";
-import MDBadge from "components/MDBadge";
+import MDButton from "components/MDButton";
+import Chip from "@mui/material/Chip";
 import Icon from "@mui/material/Icon";
-import Menu from "@mui/material/Menu";
-import MenuItem from "@mui/material/MenuItem";
-import IconButton from "@mui/material/IconButton";
 
 // 👇 CORRECCIÓN: Se añaden onEditRole y onToggleDisable a los parámetros
 export default function useUsersTableData(searchTerm, roleFilter, onEditRole, onToggleDisable) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
-  const [anchorEl, setAnchorEl] = useState(null);
-  const [currentUserMenu, setCurrentUserMenu] = useState(null);
-
-  const handleMenuOpen = (event, user) => {
-    setAnchorEl(event.currentTarget);
-    setCurrentUserMenu(user);
-    console.log("Abriendo menú para:", user); // Log para depurar
-  };
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-    setCurrentUserMenu(null);
-  };
 
   useEffect(() => {
     setLoading(true);
@@ -94,21 +80,30 @@ export default function useUsersTableData(searchTerm, roleFilter, onEditRole, on
     const statusText = isDisabled ? "Deshabilitado" : "Activo";
     const statusColor = isDisabled ? "secondary" : "success";
 
+    const getRoleText = (role) => {
+      const roleMap = {
+        admin: "Administrador",
+        asociado: "Asociado",
+        cliente: "Cliente",
+      };
+      return roleMap[role] || role || "N/A";
+    };
+
     return {
       usuario: <User name={user.name} email={user.email} />,
       rol: (
         <MDBox ml={-1}>
-          <MDBadge
-            badgeContent={user.role || "N/A"}
+          <Chip
+            label={getRoleText(user.role)}
             color={roleColor}
-            variant="gradient"
-            size="sm"
+            size="small"
+            sx={{ fontWeight: "bold" }}
           />
         </MDBox>
       ),
       estado: (
         <MDBox ml={-1}>
-          <MDBadge badgeContent={statusText} color={statusColor} variant="gradient" size="sm" />
+          <Chip label={statusText} color={statusColor} size="small" sx={{ fontWeight: "bold" }} />
         </MDBox>
       ),
       fecha_creacion: (
@@ -119,35 +114,34 @@ export default function useUsersTableData(searchTerm, roleFilter, onEditRole, on
         </MDTypography>
       ),
       acciones: (
-        <>
-          <IconButton size="small" onClick={(event) => handleMenuOpen(event, user)}>
-            <Icon>more_vert</Icon>
-          </IconButton>
-          <Menu
-            anchorEl={anchorEl}
-            // Asegúrate que la comparación use user.id, asumiendo que user tiene 'id'
-            open={Boolean(anchorEl) && currentUserMenu?.id === user.id}
-            onClose={handleMenuClose}
+        <MDBox display="flex" gap={1} justifyContent="center" flexWrap="wrap">
+          <MDButton
+            variant="outlined"
+            color="info"
+            size="small"
+            onClick={() => {
+              if (onEditRole) onEditRole(user);
+            }}
           >
-            {/* 👇 CORRECCIÓN: Llama a las funciones recibidas como props */}
-            <MenuItem
-              onClick={() => {
-                if (onEditRole) onEditRole(currentUserMenu);
-                handleMenuClose();
-              }}
-            >
-              Editar Rol
-            </MenuItem>
-            <MenuItem
-              onClick={() => {
-                if (onToggleDisable) onToggleDisable(currentUserMenu);
-                handleMenuClose();
-              }}
-            >
-              {isDisabled ? "Habilitar Usuario" : "Deshabilitar Usuario"}
-            </MenuItem>
-          </Menu>
-        </>
+            <Icon fontSize="small" sx={{ mr: 0.5 }}>
+              edit
+            </Icon>
+            Editar Rol
+          </MDButton>
+          <MDButton
+            variant="outlined"
+            color={isDisabled ? "success" : "error"}
+            size="small"
+            onClick={() => {
+              if (onToggleDisable) onToggleDisable(user);
+            }}
+          >
+            <Icon fontSize="small" sx={{ mr: 0.5 }}>
+              {isDisabled ? "check_circle" : "cancel"}
+            </Icon>
+            {isDisabled ? "Habilitar" : "Deshabilitar"}
+          </MDButton>
+        </MDBox>
       ),
     };
   });

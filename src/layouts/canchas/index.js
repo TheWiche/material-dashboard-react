@@ -10,6 +10,9 @@ import {
   callApproveFieldRequest,
   notifyReservationCreated,
   notifyReservationReceived,
+  addToFavorites,
+  removeFromFavorites,
+  subscribeToFavorites,
 } from "services/firebaseService";
 import { useAuth } from "context/AuthContext";
 
@@ -17,10 +20,12 @@ import { useAuth } from "context/AuthContext";
 import Grid from "@mui/material/Grid";
 import Card from "@mui/material/Card";
 import Icon from "@mui/material/Icon";
+import IconButton from "@mui/material/IconButton";
 import CircularProgress from "@mui/material/CircularProgress";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import MDBadge from "components/MDBadge";
+import Tooltip from "@mui/material/Tooltip";
 
 // GoalTime App components
 import MDBox from "components/MDBox";
@@ -35,10 +40,9 @@ import Footer from "examples/Footer";
 import ReservationModal from "layouts/canchas/components/ReservationModal";
 import AdminEditFieldModal from "layouts/canchas/components/AdminEditFieldModal";
 import ConfirmationDialog from "layouts/admin-users/components/ConfirmationDialog";
-import IconButton from "@mui/material/IconButton";
 
 function Canchas() {
-  const { userProfile } = useAuth();
+  const { userProfile, currentUser } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [fields, setFields] = useState([]);
@@ -56,6 +60,8 @@ function Canchas() {
   const [fieldToApprove, setFieldToApprove] = useState(null);
   const [confirmAction, setConfirmAction] = useState(""); // "approve" o "reject"
   const [loadingAction, setLoadingAction] = useState(false);
+  const [favoriteIds, setFavoriteIds] = useState([]);
+  const [togglingFavorite, setTogglingFavorite] = useState(null);
   const hasProcessedEditParam = useRef(false);
 
   const openFilterMenu = (event) => setFilterMenu(event.currentTarget);
@@ -205,6 +211,54 @@ function Canchas() {
     pending: "Canchas Pendientes",
     rejected: "Canchas Rechazadas",
     disabled: "Canchas Deshabilitadas",
+  };
+
+  // Suscribirse a favoritos del usuario
+  useEffect(() => {
+    if (!currentUser || userProfile?.role !== "cliente") return;
+
+    const unsubscribe = subscribeToFavorites(currentUser.uid, (favoriteIdsList) => {
+      setFavoriteIds(favoriteIdsList);
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [currentUser, userProfile]);
+
+  // Manejar toggle de favoritos
+  const handleToggleFavorite = async (fieldId, e) => {
+    e.stopPropagation(); // Evitar que se active el click del card
+    if (!currentUser || userProfile?.role !== "cliente") return;
+
+    setTogglingFavorite(fieldId);
+    try {
+      const isFavorite = favoriteIds.includes(fieldId);
+      if (isFavorite) {
+        await removeFromFavorites(fieldId);
+        setSnackbar({
+          open: true,
+          color: "info",
+          message: "Cancha removida de favoritos",
+        });
+      } else {
+        await addToFavorites(fieldId);
+        setSnackbar({
+          open: true,
+          color: "success",
+          message: "Cancha agregada a favoritos",
+        });
+      }
+    } catch (error) {
+      console.error("Error al actualizar favoritos:", error);
+      setSnackbar({
+        open: true,
+        color: "error",
+        message: "Error al actualizar favoritos",
+      });
+    } finally {
+      setTogglingFavorite(null);
+    }
   };
 
   const handleOpenReservation = (field) => {
@@ -401,6 +455,35 @@ function Canchas() {
                             </IconButton>
                           </MDBox>
                         </>
+                      )}
+                      {userProfile?.role === "cliente" && (
+                        <MDBox position="absolute" top={10} right={10}>
+                          <Tooltip
+                            title={
+                              favoriteIds.includes(field.id)
+                                ? "Remover de favoritos"
+                                : "Agregar a favoritos"
+                            }
+                          >
+                            <IconButton
+                              size="small"
+                              onClick={(e) => handleToggleFavorite(field.id, e)}
+                              disabled={togglingFavorite === field.id}
+                              sx={{
+                                bgcolor: "white",
+                                "&:hover": { bgcolor: "grey.100" },
+                                boxShadow: 2,
+                                color: favoriteIds.includes(field.id)
+                                  ? "error.main"
+                                  : "text.secondary",
+                              }}
+                            >
+                              <Icon fontSize="small">
+                                {favoriteIds.includes(field.id) ? "favorite" : "favorite_border"}
+                              </Icon>
+                            </IconButton>
+                          </Tooltip>
+                        </MDBox>
                       )}
                     </MDBox>
                     <MDBox p={3}>

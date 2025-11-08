@@ -1,32 +1,30 @@
 // src/layouts/authentication/sign-up/index.js
 
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-
-// @mui material components
-import Card from "@mui/material/Card";
-import Checkbox from "@mui/material/Checkbox";
-import LinearProgress from "@mui/material/LinearProgress";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Box, Divider, Checkbox, Button } from "@mui/material";
 import InputAdornment from "@mui/material/InputAdornment";
 import IconButton from "@mui/material/IconButton";
-import Icon from "@mui/material/Icon";
-
-// GoalTime App components
+import LinearProgress from "@mui/material/LinearProgress";
+import {
+  Facebook,
+  Google,
+  Person,
+  Email,
+  Lock,
+  Visibility,
+  VisibilityOff,
+  Help,
+} from "@mui/icons-material";
 import MDBox from "components/MDBox";
 import MDTypography from "components/MDTypography";
 import MDInput from "components/MDInput";
 import MDButton from "components/MDButton";
 import MDSnackbar from "components/MDSnackbar";
 import FullScreenLoader from "components/FullScreenLoader";
-
-// Authentication layout components
-import CoverLayout from "layouts/authentication/components/CoverLayout";
-
-// Images
+import SplitScreenLayout from "layouts/authentication/components/SplitScreenLayout";
 import bgImage from "assets/images/bg-sign-up-cover.png";
-
-// Importamos nuestra función de registro desde el servicio
-import { registerUser } from "services/firebaseService";
+import { registerUser, signInWithFacebook } from "services/firebaseService";
 import { useAuth } from "context/AuthContext";
 
 const getFriendlyErrorMessage = (errorCode) => {
@@ -42,7 +40,7 @@ const getFriendlyErrorMessage = (errorCode) => {
   }
 };
 
-// 👈 Función para calcular la fuerza de la contraseña
+// Función para calcular la fuerza de la contraseña
 const calculatePasswordStrength = (password) => {
   let score = 0;
   if (!password) return { value: 0, color: "error", label: "" };
@@ -94,7 +92,6 @@ function Cover() {
   // Efecto para redirigir cuando el usuario esté autenticado y el perfil esté cargado
   useEffect(() => {
     if (registrationSuccess && !initialAuthLoading && userProfile) {
-      // Esperar un momento adicional para asegurar que todo esté listo
       const timer = setTimeout(() => {
         setIsLoading(false);
         navigate("/canchas");
@@ -120,13 +117,35 @@ function Cover() {
     setRegistrationSuccess(false);
     try {
       await registerUser(name, email, password);
-      // Marcamos el registro como exitoso y esperamos a que el AuthContext cargue el perfil
       setRegistrationSuccess(true);
     } catch (error) {
       setErrorMessage(getFriendlyErrorMessage(error.code));
       openErrorSB();
       setIsLoading(false);
       setRegistrationSuccess(false);
+    }
+  };
+
+  const handleFacebookSignIn = async () => {
+    setIsLoading(true);
+    try {
+      const userProfile = await signInWithFacebook();
+      if (userProfile.role === "cliente") {
+        navigate("/canchas");
+      } else {
+        navigate("/dashboard");
+      }
+    } catch (error) {
+      if (error.code === "auth/account-exists-with-different-credential") {
+        setErrorMessage(
+          "Ya existe una cuenta con este email. Inicia sesión con tu método original."
+        );
+      } else {
+        setErrorMessage(getFriendlyErrorMessage(error.code));
+      }
+      openErrorSB();
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -144,7 +163,6 @@ function Cover() {
     />
   );
 
-  // 👈 Se renderiza la notificación de broma
   const renderJokeSB = (
     <MDSnackbar
       color="dark"
@@ -158,163 +176,404 @@ function Cover() {
     />
   );
 
-  return (
-    <CoverLayout image={bgImage}>
+  // Right Panel Content (40% - Image with Overlay)
+  const rightContent = (
+    <MDBox
+      width="100%"
+      height="100%"
+      sx={{
+        backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(${bgImage})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+        position: "relative",
+        overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "flex-end",
+        p: 4,
+      }}
+    >
+      <MDBox sx={{ position: "relative", zIndex: 1 }}>
+        <MDTypography variant="h3" fontWeight="bold" color="white" mb={2}>
+          Únete a nuestra comunidad
+        </MDTypography>
+        <MDTypography variant="body1" color="white" sx={{ opacity: 0.9, maxWidth: "300px" }}>
+          Miles de usuarios ya confían en nosotros. Crea tu cuenta y descubre todas las ventajas.
+        </MDTypography>
+      </MDBox>
+      {/* Help Icon */}
+      <IconButton
+        component={Link}
+        to="/sobre-nosotros"
+        sx={{
+          position: "absolute",
+          bottom: 24,
+          right: 24,
+          backgroundColor: "rgba(255, 255, 255, 0.1)",
+          color: "white",
+          width: 40,
+          height: 40,
+          "&:hover": {
+            backgroundColor: "rgba(255, 255, 255, 0.2)",
+          },
+        }}
+      >
+        <Help />
+      </IconButton>
+    </MDBox>
+  );
+
+  // Left Panel Content (60% - White Form)
+  const leftContent = (
+    <MDBox
+      width="100%"
+      height="100%"
+      display="flex"
+      flexDirection="column"
+      justifyContent="center"
+      px={{ xs: 3, sm: 6, md: 8 }}
+      py={4}
+    >
       {isLoading && <FullScreenLoader />}
-      <Card>
-        <MDBox
-          variant="gradient"
-          bgColor="info"
-          borderRadius="lg"
-          coloredShadow="success"
-          mx={2}
-          mt={-3}
-          p={3}
-          mb={1}
-          textAlign="center"
-        >
-          <MDTypography variant="h4" fontWeight="medium" color="white" mt={1}>
-            Regístrate hoy
-          </MDTypography>
-          <MDTypography display="block" variant="button" color="white" my={1}>
-            Ingresa tus datos para registrarte
-          </MDTypography>
+
+      {/* Form Content */}
+      <MDBox maxWidth="480px" mx="auto" width="100%">
+        <MDTypography variant="h3" fontWeight="bold" color="dark" mb={1}>
+          Crear Cuenta
+        </MDTypography>
+        <MDTypography variant="body2" color="text" mb={4}>
+          Regístrate para comenzar tu experiencia
+        </MDTypography>
+
+        {/* Social Login Buttons */}
+        <MDBox display="flex" gap={2} mb={3}>
+          <Button
+            variant="outlined"
+            fullWidth
+            sx={{
+              borderColor: "grey.300",
+              color: "text.primary",
+              textTransform: "none",
+              py: 1.5,
+              "&:hover": {
+                borderColor: "grey.400",
+                backgroundColor: "grey.50",
+              },
+            }}
+            startIcon={<Google />}
+          >
+            Google
+          </Button>
+          <Button
+            variant="outlined"
+            fullWidth
+            onClick={handleFacebookSignIn}
+            sx={{
+              borderColor: "grey.300",
+              color: "text.primary",
+              textTransform: "none",
+              py: 1.5,
+              "&:hover": {
+                borderColor: "grey.400",
+                backgroundColor: "grey.50",
+              },
+            }}
+            startIcon={<Facebook />}
+          >
+            Facebook
+          </Button>
         </MDBox>
-        <MDBox pt={4} pb={3} px={3}>
-          <MDBox component="form" role="form" onSubmit={handleRegister}>
-            <MDBox mb={2}>
-              <MDInput
-                type="text"
-                label="Nombre"
-                variant="standard"
-                fullWidth
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
+
+        {/* Divider */}
+        <MDBox position="relative" mb={3}>
+          <Divider />
+          <MDBox
+            sx={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              backgroundColor: "white",
+              px: 2,
+            }}
+          >
+            <MDTypography variant="caption" color="text.secondary">
+              O regístrate con email
+            </MDTypography>
+          </MDBox>
+        </MDBox>
+
+        {/* Form */}
+        <MDBox component="form" onSubmit={handleRegister}>
+          {/* Full Name Input */}
+          <MDBox mb={3}>
+            <MDTypography variant="caption" color="text" fontWeight="medium" mb={1} display="block">
+              Nombre Completo
+            </MDTypography>
+            <MDInput
+              type="text"
+              placeholder="Juan Pérez"
+              fullWidth
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  backgroundColor: "grey.100",
+                  "& fieldset": {
+                    borderColor: "grey.300",
+                  },
+                  "&:hover fieldset": {
+                    borderColor: "grey.400",
+                  },
+                },
+              }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Person sx={{ color: "text.secondary" }} />
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </MDBox>
+
+          {/* Email Input */}
+          <MDBox mb={3}>
+            <MDTypography variant="caption" color="text" fontWeight="medium" mb={1} display="block">
+              Correo Electrónico
+            </MDTypography>
+            <MDInput
+              type="email"
+              placeholder="nombre@ejemplo.com"
+              fullWidth
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  backgroundColor: "grey.100",
+                  "& fieldset": {
+                    borderColor: "grey.300",
+                  },
+                  "&:hover fieldset": {
+                    borderColor: "grey.400",
+                  },
+                },
+              }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Email sx={{ color: "text.secondary" }} />
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </MDBox>
+
+          {/* Password Input */}
+          <MDBox mb={2}>
+            <MDTypography variant="caption" color="text" fontWeight="medium" mb={1} display="block">
+              Contraseña
+            </MDTypography>
+            <MDInput
+              type={showPassword ? "text" : "password"}
+              placeholder="********"
+              fullWidth
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  backgroundColor: "grey.100",
+                  "& fieldset": {
+                    borderColor: "grey.300",
+                  },
+                  "&:hover fieldset": {
+                    borderColor: "grey.400",
+                  },
+                },
+              }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Lock sx={{ color: "text.secondary" }} />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowPassword(!showPassword)}
+                      edge="end"
+                      size="small"
+                    >
+                      {showPassword ? (
+                        <VisibilityOff sx={{ color: "text.secondary" }} />
+                      ) : (
+                        <Visibility sx={{ color: "text.secondary" }} />
+                      )}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </MDBox>
+
+          {/* Password Strength Indicator */}
+          {password && (
+            <MDBox mb={3}>
+              <LinearProgress
+                variant="determinate"
+                value={strength.value}
+                color={strength.color}
+                sx={{ height: 6, borderRadius: 1 }}
               />
-            </MDBox>
-            <MDBox mb={2}>
-              <MDInput
-                type="email"
-                label="Correo electrónico"
-                variant="standard"
-                fullWidth
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </MDBox>
-            <MDBox mb={1}>
-              <MDInput
-                type={showPassword ? "text" : "password"} // 👈 Tipo de input dinámico
-                label="Contraseña"
-                variant="standard"
-                fullWidth
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                // 👇 Se añade el ícono del ojo
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
-                        <Icon fontSize="small">
-                          {showPassword ? "visibility" : "visibility_off"}
-                        </Icon>
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </MDBox>
-            {/* 👇 Barra de progreso para la fuerza de la contraseña */}
-            {password && (
-              <MDBox mt={0.75} display="flex" alignItems="center">
-                <LinearProgress
-                  variant="determinate"
-                  value={strength.value}
-                  color={strength.color}
-                  sx={{ flexGrow: 1 }}
-                />
-                <MDTypography
-                  variant="caption"
-                  color={strength.color}
-                  sx={{ ml: 1, minWidth: "80px" }}
-                >
+              {strength.label && (
+                <MDTypography variant="caption" color={strength.color} mt={0.5} display="block">
                   {strength.label}
                 </MDTypography>
-              </MDBox>
-            )}
-            <MDBox mt={2} mb={2}>
-              {/* 👇 Nuevo campo para repetir la contraseña */}
-              <MDInput
-                type={showPassword ? "text" : "password"}
-                label="Confirmar Contraseña"
-                variant="standard"
-                fullWidth
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                error={confirmPassword !== "" && password !== confirmPassword}
-              />
+              )}
             </MDBox>
-            <MDBox display="flex" alignItems="center" ml={-1}>
-              {/* 👇 Checkbox ahora es funcional */}
-              <Checkbox checked={agreeTerms} onChange={(e) => setAgreeTerms(e.target.checked)} />
+          )}
+
+          {/* Confirm Password Input */}
+          <MDBox mb={3}>
+            <MDTypography variant="caption" color="text" fontWeight="medium" mb={1} display="block">
+              Confirmar Contraseña
+            </MDTypography>
+            <MDInput
+              type={showPassword ? "text" : "password"}
+              placeholder="********"
+              fullWidth
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              error={confirmPassword !== "" && password !== confirmPassword}
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  backgroundColor: "grey.100",
+                  "& fieldset": {
+                    borderColor:
+                      confirmPassword !== "" && password !== confirmPassword
+                        ? "error.main"
+                        : "grey.300",
+                  },
+                  "&:hover fieldset": {
+                    borderColor: "grey.400",
+                  },
+                },
+              }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Lock sx={{ color: "text.secondary" }} />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowPassword(!showPassword)}
+                      edge="end"
+                      size="small"
+                    >
+                      {showPassword ? (
+                        <VisibilityOff sx={{ color: "text.secondary" }} />
+                      ) : (
+                        <Visibility sx={{ color: "text.secondary" }} />
+                      )}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </MDBox>
+
+          {/* Terms and Conditions */}
+          <MDBox display="flex" alignItems="center" mb={4}>
+            <Checkbox
+              checked={agreeTerms}
+              onChange={(e) => setAgreeTerms(e.target.checked)}
+              sx={{ p: 0, mr: 1 }}
+            />
+            <MDTypography variant="body2" color="text">
+              Acepto los{" "}
               <MDTypography
-                variant="button"
-                fontWeight="regular"
-                color="text"
-                sx={{ cursor: "pointer", userSelect: "none" }}
-                onClick={(e) => setAgreeTerms(!agreeTerms)}
-              >
-                &nbsp;&nbsp;Acepto los&nbsp;
-              </MDTypography>
-              <MDTypography
-                component="span" // Se cambia a 'span' para que no actúe como link
-                variant="button"
+                component="span"
+                variant="body2"
                 fontWeight="bold"
-                color="info"
-                textGradient
-                onClick={openJokeSB} // 👈 Se activa la broma al hacer clic
-                sx={{ cursor: "pointer" }}
+                sx={{
+                  color: (theme) => theme.palette.goaltime.main,
+                  cursor: "pointer",
+                }}
+                onClick={openJokeSB}
               >
                 Términos y Condiciones
               </MDTypography>
-            </MDBox>
-            <MDBox mt={4} mb={1}>
-              {/* 👇 El botón se deshabilita si los términos no son aceptados */}
-              <MDButton
-                type="submit"
-                variant="gradient"
-                color="info"
-                fullWidth
-                disabled={!agreeTerms}
+            </MDTypography>
+          </MDBox>
+
+          {/* Register Button */}
+          <MDButton
+            type="submit"
+            variant="contained"
+            fullWidth
+            disabled={!agreeTerms}
+            sx={{
+              backgroundColor: (theme) => theme.palette.goaltime.main,
+              color: "white",
+              py: 1.5,
+              mb: 3,
+              textTransform: "none",
+              fontSize: "1rem",
+              fontWeight: "medium",
+              "&:hover": {
+                backgroundColor: (theme) => theme.palette.goaltime.dark,
+              },
+              "&:disabled": {
+                backgroundColor: "grey.300",
+                color: "grey.500",
+              },
+            }}
+          >
+            Crear Cuenta
+          </MDButton>
+
+          {/* Sign In Link */}
+          <MDBox textAlign="center">
+            <MDTypography variant="body2" color="text">
+              ¿Ya tienes una cuenta?{" "}
+              <MDTypography
+                component={Link}
+                to="/authentication/sign-in"
+                variant="body2"
+                sx={{
+                  color: (theme) => theme.palette.goaltime.main,
+                  fontWeight: "bold",
+                  textDecoration: "none",
+                  "&:hover": {
+                    textDecoration: "underline",
+                  },
+                }}
               >
-                Crear cuenta
-              </MDButton>
-            </MDBox>
-            <MDBox mt={3} mb={1} textAlign="center">
-              <MDTypography variant="button" color="text">
-                ¿Ya tienes una cuenta?{" "}
-                <MDTypography
-                  component={Link}
-                  to="/authentication/sign-in"
-                  variant="button"
-                  color="info"
-                  fontWeight="medium"
-                  textGradient
-                >
-                  Iniciar Sesión
-                </MDTypography>
+                Iniciar Sesión
               </MDTypography>
-            </MDBox>
+            </MDTypography>
           </MDBox>
         </MDBox>
-      </Card>
+      </MDBox>
       {renderErrorSB}
-      {renderJokeSB} {/* 👈 Se renderiza la nueva notificación */}
-    </CoverLayout>
+      {renderJokeSB}
+    </MDBox>
+  );
+
+  return (
+    <SplitScreenLayout
+      leftContent={leftContent}
+      rightContent={rightContent}
+      leftWidth="60%"
+      rightWidth="40%"
+    />
   );
 }
 

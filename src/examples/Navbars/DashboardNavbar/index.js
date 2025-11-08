@@ -133,6 +133,19 @@ function DashboardNavbar({ absolute, light, isMini }) {
           </MDTypography>
         </MenuItem>
 
+        <MenuItem
+          onClick={(e) => {
+            handleCloseAccountMenu();
+            // Disparar evento para abrir modal de configuración
+            window.dispatchEvent(new CustomEvent("openSettingsModal"));
+          }}
+        >
+          <Icon>settings</Icon>
+          <MDTypography variant="button" sx={{ ml: 1 }}>
+            Configuración
+          </MDTypography>
+        </MenuItem>
+
         <Divider sx={{ my: 1 }} />
 
         <MenuItem onClick={handleLogout}>

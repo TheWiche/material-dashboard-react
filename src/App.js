@@ -15,6 +15,7 @@ import { useMaterialUIController, setMiniSidenav, setOpenConfigurator } from "co
 import { useAuth } from "context/AuthContext";
 import brandWhite from "assets/images/Logo.png";
 import brandDark from "assets/images/Logo.png";
+import GlobalSettingsModal from "components/GlobalSettingsModal";
 
 export default function App() {
   const [controller, dispatch] = useMaterialUIController();
@@ -177,6 +178,8 @@ export default function App() {
         */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
+      {/* Modal de configuración global */}
+      {userProfile && <GlobalSettingsModal />}
     </ThemeProvider>
   );
 }

@@ -16,6 +16,9 @@ import {
   db,
   notifyReservationConfirmed,
   notifyReservationCancelled,
+  checkReservationConflict,
+  updateReservationStatus,
+  sendReservationStatusChangeEmail,
 } from "services/firebaseService";
 import { useAuth } from "context/AuthContext";
 
@@ -31,6 +34,11 @@ import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
+import TextField from "@mui/material/TextField";
+import Select from "@mui/material/Select";
+import FormControl from "@mui/material/FormControl";
+import InputLabel from "@mui/material/InputLabel";
+import Divider from "@mui/material/Divider";
 
 // GoalTime App components
 import MDBox from "components/MDBox";
@@ -62,6 +70,10 @@ function AssociateReservations() {
   const [clientInfo, setClientInfo] = useState(null);
   const [loadingClientInfo, setLoadingClientInfo] = useState(false);
   const [clientsMap, setClientsMap] = useState({}); // Mapa de clientId -> nombre del cliente
+  const [isChangeStatusModalOpen, setIsChangeStatusModalOpen] = useState(false);
+  const [newStatus, setNewStatus] = useState("");
+  const [statusChangeReason, setStatusChangeReason] = useState("");
+  const [changingStatus, setChangingStatus] = useState(false);
 
   // Obtener las canchas del asociado primero
   useEffect(() => {
@@ -266,6 +278,27 @@ function AssociateReservations() {
     setLoadingAction(true);
 
     try {
+      // Si se está aprobando, validar que no haya conflictos
+      if (confirmAction === "approve") {
+        const conflictCheck = await checkReservationConflict(
+          selectedReservation.fieldId,
+          selectedReservation.date,
+          selectedReservation.startTime,
+          selectedReservation.endTime,
+          selectedReservation.id // Excluir la reserva actual
+        );
+
+        if (conflictCheck.hasConflict) {
+          setSnackbar({
+            open: true,
+            color: "error",
+            message: `No se puede aprobar esta reserva. El horario (${selectedReservation.startTime} - ${selectedReservation.endTime}) ya está ocupado por otra reserva confirmada de ${conflictCheck.conflictingReservation.clientName}.`,
+          });
+          setLoadingAction(false);
+          return;
+        }
+      }
+
       const reservationRef = doc(db, "reservations", selectedReservation.id);
       const newStatus = confirmAction === "approve" ? "confirmed" : "cancelled";
 
@@ -383,6 +416,23 @@ function AssociateReservations() {
             visibility
           </Icon>
           Ver
+        </MDButton>
+        <MDButton
+          variant="outlined"
+          color="secondary"
+          size="small"
+          onClick={() => {
+            setSelectedReservation(reservation);
+            setNewStatus("");
+            setStatusChangeReason("");
+            setIsChangeStatusModalOpen(true);
+          }}
+          disabled={changingStatus}
+        >
+          <Icon fontSize="small" sx={{ mr: 0.5 }}>
+            edit
+          </Icon>
+          Cambiar Estado
         </MDButton>
         {reservation.status === "pending" && (
           <>
@@ -738,6 +788,241 @@ function AssociateReservations() {
               </MDButton>
             </>
           )}
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal para cambiar estado */}
+      <Dialog
+        open={isChangeStatusModalOpen}
+        onClose={() => {
+          if (!changingStatus) {
+            setIsChangeStatusModalOpen(false);
+            setNewStatus("");
+            setStatusChangeReason("");
+            setSelectedReservation(null);
+          }
+        }}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+          },
+        }}
+      >
+        <DialogTitle>
+          <MDBox display="flex" justifyContent="space-between" alignItems="center">
+            <MDTypography variant="h5" fontWeight="bold">
+              Cambiar Estado de Reserva
+            </MDTypography>
+            <MDButton
+              iconOnly
+              size="small"
+              onClick={() => {
+                if (!changingStatus) {
+                  setIsChangeStatusModalOpen(false);
+                  setNewStatus("");
+                  setStatusChangeReason("");
+                  setSelectedReservation(null);
+                }
+              }}
+              disabled={changingStatus}
+            >
+              <Icon>close</Icon>
+            </MDButton>
+          </MDBox>
+        </DialogTitle>
+
+        <DialogContent>
+          {selectedReservation && (
+            <MDBox>
+              <MDBox mb={3}>
+                <MDTypography variant="body2" color="text" mb={1}>
+                  <strong>Cancha:</strong> {selectedReservation.fieldName}
+                </MDTypography>
+                <MDTypography variant="body2" color="text" mb={1}>
+                  <strong>Cliente:</strong>{" "}
+                  {selectedReservation.clientName ||
+                    clientsMap[selectedReservation.clientId] ||
+                    "Cliente"}
+                </MDTypography>
+                <MDTypography variant="body2" color="text" mb={1}>
+                  <strong>Fecha:</strong> {formatDate(selectedReservation.date)}
+                </MDTypography>
+                <MDTypography variant="body2" color="text" mb={2}>
+                  <strong>Hora:</strong> {formatTime(selectedReservation.startTime)} -{" "}
+                  {formatTime(selectedReservation.endTime)}
+                </MDTypography>
+                <MDBox display="flex" alignItems="center" gap={1}>
+                  <MDTypography variant="body2" color="text">
+                    <strong>Estado Actual:</strong>
+                  </MDTypography>
+                  <Chip
+                    label={getStatusText(selectedReservation.status)}
+                    color={getStatusColor(selectedReservation.status)}
+                    size="small"
+                  />
+                </MDBox>
+              </MDBox>
+
+              <Divider sx={{ my: 2 }} />
+
+              <FormControl fullWidth margin="normal" required>
+                <InputLabel>Nuevo Estado</InputLabel>
+                <Select
+                  value={newStatus}
+                  onChange={(e) => setNewStatus(e.target.value)}
+                  label="Nuevo Estado"
+                  disabled={changingStatus}
+                >
+                  <MenuItem value="pending">Pendiente</MenuItem>
+                  <MenuItem value="confirmed">Confirmada</MenuItem>
+                  <MenuItem value="cancelled">Cancelada</MenuItem>
+                  <MenuItem value="completed">Completada</MenuItem>
+                </Select>
+              </FormControl>
+
+              <TextField
+                fullWidth
+                margin="normal"
+                label="Razón del Cambio"
+                multiline
+                rows={4}
+                value={statusChangeReason}
+                onChange={(e) => setStatusChangeReason(e.target.value)}
+                placeholder="Ej: Cliente solicitó cancelación por motivos personales..."
+                helperText="Explica brevemente el motivo del cambio de estado. Esta información se enviará al cliente por correo."
+                disabled={changingStatus}
+                required
+              />
+            </MDBox>
+          )}
+        </DialogContent>
+
+        <DialogActions sx={{ p: 3, pt: 2 }}>
+          <MDButton
+            onClick={() => {
+              if (!changingStatus) {
+                setIsChangeStatusModalOpen(false);
+                setNewStatus("");
+                setStatusChangeReason("");
+                setSelectedReservation(null);
+              }
+            }}
+            color="secondary"
+            variant="outlined"
+            disabled={changingStatus}
+          >
+            Cancelar
+          </MDButton>
+          <MDButton
+            variant="gradient"
+            color="info"
+            onClick={async () => {
+              if (!selectedReservation || !newStatus) return;
+
+              // No permitir cambiar al mismo estado
+              if (selectedReservation.status === newStatus) {
+                setSnackbar({
+                  open: true,
+                  color: "warning",
+                  message: "La reserva ya está en ese estado.",
+                });
+                return;
+              }
+
+              setChangingStatus(true);
+              try {
+                // Actualizar el estado
+                const updatedReservation = await updateReservationStatus(
+                  selectedReservation.id,
+                  newStatus,
+                  statusChangeReason,
+                  currentUser.uid
+                );
+
+                // Obtener información del cliente para el correo
+                let clientEmail = "";
+                let clientName = selectedReservation.clientName || "Cliente";
+
+                try {
+                  if (selectedReservation.clientId) {
+                    const clientDoc = await getDoc(doc(db, "users", selectedReservation.clientId));
+                    if (clientDoc.exists()) {
+                      const clientData = clientDoc.data();
+                      clientEmail = clientData.email || "";
+                      clientName = clientData.name || clientName;
+                    }
+                  }
+                } catch (error) {
+                  console.error("Error al obtener información del cliente:", error);
+                }
+
+                // Enviar correo de notificación
+                if (clientEmail) {
+                  try {
+                    await sendReservationStatusChangeEmail(
+                      { ...selectedReservation, previousStatus: selectedReservation.status },
+                      newStatus,
+                      statusChangeReason,
+                      clientEmail,
+                      clientName
+                    );
+                  } catch (emailError) {
+                    console.error("Error al enviar correo:", emailError);
+                    // No fallar la operación si el correo falla, pero informar
+                    setSnackbar({
+                      open: true,
+                      color: "warning",
+                      message: `Estado actualizado, pero no se pudo enviar el correo: ${emailError.message}`,
+                    });
+                  }
+                }
+
+                setSnackbar({
+                  open: true,
+                  color: "success",
+                  message: `Estado de la reserva actualizado a "${getStatusText(
+                    newStatus
+                  )}" exitosamente.${
+                    clientEmail ? " Se envió una notificación por correo al cliente." : ""
+                  }`,
+                });
+
+                setIsChangeStatusModalOpen(false);
+                setNewStatus("");
+                setStatusChangeReason("");
+                setSelectedReservation(null);
+              } catch (error) {
+                console.error("Error al cambiar estado:", error);
+                setSnackbar({
+                  open: true,
+                  color: "error",
+                  message: error.message || "Error al cambiar el estado de la reserva.",
+                });
+              } finally {
+                setChangingStatus(false);
+              }
+            }}
+            disabled={
+              !newStatus ||
+              !statusChangeReason ||
+              changingStatus ||
+              selectedReservation?.status === newStatus
+            }
+          >
+            {changingStatus ? (
+              <>
+                <CircularProgress size={20} color="inherit" sx={{ mr: 1 }} />
+                Procesando...
+              </>
+            ) : (
+              <>
+                <Icon sx={{ mr: 1 }}>save</Icon>
+                Guardar Cambio
+              </>
+            )}
+          </MDButton>
         </DialogActions>
       </Dialog>
 

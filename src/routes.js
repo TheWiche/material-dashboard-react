@@ -80,7 +80,7 @@ const routes = [
   },
   {
     type: "collapse",
-    name: "Mis Reservas",
+    name: "Reservas",
     key: "associate-reservations",
     icon: <Icon fontSize="small">event</Icon>,
     route: "/associate/reservations",

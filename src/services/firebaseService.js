@@ -10,6 +10,7 @@ import {
   browserSessionPersistence,
   browserLocalPersistence,
   GoogleAuthProvider,
+  FacebookAuthProvider,
   signInWithPopup,
   getIdToken,
   sendPasswordResetEmail,
@@ -20,6 +21,7 @@ import {
   doc,
   setDoc,
   updateDoc,
+  deleteDoc,
   serverTimestamp,
   getDoc,
   getDocs,
@@ -85,6 +87,25 @@ export const loginUser = async (email, password, rememberMe) => {
 
 export const signInWithGoogle = async () => {
   const provider = new GoogleAuthProvider();
+  const result = await signInWithPopup(auth, provider);
+  const user = result.user;
+  const userDocRef = doc(db, "users", user.uid);
+  const userDocSnap = await getDoc(userDocRef);
+  if (!userDocSnap.exists()) {
+    await setDoc(userDocRef, {
+      uid: user.uid,
+      name: user.displayName,
+      email: user.email,
+      role: "cliente",
+      createdAt: serverTimestamp(),
+    });
+  }
+  const finalProfileSnap = await getDoc(userDocRef);
+  return finalProfileSnap.data();
+};
+
+export const signInWithFacebook = async () => {
+  const provider = new FacebookAuthProvider();
   const result = await signInWithPopup(auth, provider);
   const user = result.user;
   const userDocRef = doc(db, "users", user.uid);
@@ -428,11 +449,186 @@ export const callApproveFieldRequest = async (fieldId, action) => {
 
 // 👇 FUNCIONES PARA RESERVAS
 
-// Crear una reserva (cliente)
+// Verificar si hay conflictos de horario para una reserva
+export const checkReservationConflict = async (
+  fieldId,
+  date,
+  startTime,
+  endTime,
+  excludeReservationId = null
+) => {
+  try {
+    // Convertir horas a minutos para facilitar comparaciones
+    const timeToMinutes = (time) => {
+      const [hours, minutes] = time.split(":").map(Number);
+      return hours * 60 + minutes;
+    };
+
+    const startMinutes = timeToMinutes(startTime);
+    const endMinutes = timeToMinutes(endTime);
+
+    // Buscar reservas confirmadas para la misma cancha y fecha
+    const reservationsQuery = query(
+      collection(db, "reservations"),
+      where("fieldId", "==", fieldId),
+      where("date", "==", date),
+      where("status", "==", "confirmed")
+    );
+
+    const snapshot = await getDocs(reservationsQuery);
+
+    for (const doc of snapshot.docs) {
+      // Excluir la reserva actual si se está editando
+      if (excludeReservationId && doc.id === excludeReservationId) {
+        continue;
+      }
+
+      const reservation = doc.data();
+      const existingStart = timeToMinutes(reservation.startTime);
+      const existingEnd = timeToMinutes(reservation.endTime);
+
+      // Verificar si hay solapamiento
+      // Hay conflicto si:
+      // - La nueva reserva empieza durante una reserva existente
+      // - La nueva reserva termina durante una reserva existente
+      // - La nueva reserva contiene completamente una reserva existente
+      // - Una reserva existente contiene completamente la nueva reserva
+      if (
+        (startMinutes >= existingStart && startMinutes < existingEnd) ||
+        (endMinutes > existingStart && endMinutes <= existingEnd) ||
+        (startMinutes <= existingStart && endMinutes >= existingEnd) ||
+        (startMinutes >= existingStart && endMinutes <= existingEnd)
+      ) {
+        return {
+          hasConflict: true,
+          conflictingReservation: {
+            id: doc.id,
+            startTime: reservation.startTime,
+            endTime: reservation.endTime,
+            clientName: reservation.clientName || "Cliente",
+          },
+        };
+      }
+    }
+
+    return { hasConflict: false };
+  } catch (error) {
+    console.error("Error al verificar conflictos:", error);
+    throw new Error("Error al verificar disponibilidad de la reserva.");
+  }
+};
+
+// Obtener las horas disponibles para una cancha en una fecha específica
+export const getAvailableTimeSlots = async (fieldId, date, openingTime, closingTime) => {
+  try {
+    // Convertir horas a minutos
+    const timeToMinutes = (time) => {
+      const [hours, minutes] = time.split(":").map(Number);
+      return hours * 60 + minutes;
+    };
+
+    const minutesToTime = (minutes) => {
+      const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`;
+    };
+
+    const openMinutes = timeToMinutes(openingTime);
+    const closeMinutes = timeToMinutes(closingTime);
+
+    // Obtener todas las reservas confirmadas para esta cancha y fecha
+    const reservationsQuery = query(
+      collection(db, "reservations"),
+      where("fieldId", "==", fieldId),
+      where("date", "==", date),
+      where("status", "==", "confirmed")
+    );
+
+    const snapshot = await getDocs(reservationsQuery);
+    const bookedSlots = [];
+
+    snapshot.docs.forEach((doc) => {
+      const reservation = doc.data();
+      bookedSlots.push({
+        start: timeToMinutes(reservation.startTime),
+        end: timeToMinutes(reservation.endTime),
+      });
+    });
+
+    // Ordenar los slots ocupados por hora de inicio
+    bookedSlots.sort((a, b) => a.start - b.start);
+
+    // Generar todos los slots de 30 minutos disponibles
+    const allSlots = [];
+    let currentMin = openMinutes;
+
+    while (currentMin < closeMinutes) {
+      allSlots.push({
+        time: minutesToTime(currentMin),
+        minutes: currentMin,
+        available: true,
+      });
+      currentMin += 30; // Intervalos de 30 minutos
+    }
+
+    // Marcar slots ocupados como no disponibles
+    allSlots.forEach((slot) => {
+      const slotEnd = slot.minutes + 30; // Cada slot dura 30 minutos
+      bookedSlots.forEach((booked) => {
+        // Un slot está ocupado si se solapa con alguna reserva
+        if (
+          (slot.minutes >= booked.start && slot.minutes < booked.end) ||
+          (slotEnd > booked.start && slotEnd <= booked.end) ||
+          (slot.minutes <= booked.start && slotEnd >= booked.end)
+        ) {
+          slot.available = false;
+        }
+      });
+    });
+
+    return allSlots.filter((slot) => slot.available).map((slot) => slot.time);
+  } catch (error) {
+    console.error("Error al obtener horas disponibles:", error);
+    // En caso de error, devolver todas las horas del horario
+    const allSlots = [];
+    const [openHour, openMin] = openingTime.split(":").map(Number);
+    const [closeHour, closeMin] = closingTime.split(":").map(Number);
+    let currentHour = openHour;
+    let currentMin = openMin;
+
+    while (currentHour < closeHour || (currentHour === closeHour && currentMin < closeMin)) {
+      allSlots.push(
+        `${currentHour.toString().padStart(2, "0")}:${currentMin.toString().padStart(2, "0")}`
+      );
+      currentMin += 30;
+      if (currentMin >= 60) {
+        currentMin = 0;
+        currentHour += 1;
+      }
+    }
+    return allSlots;
+  }
+};
+
+// Crear una reserva (cliente) con validación
 export const createReservation = async (reservationData) => {
   try {
     const user = auth.currentUser;
     if (!user) throw new Error("No autenticado.");
+
+    // Validar que no haya conflictos antes de crear
+    const conflictCheck = await checkReservationConflict(
+      reservationData.fieldId,
+      reservationData.date,
+      reservationData.startTime,
+      reservationData.endTime
+    );
+
+    if (conflictCheck.hasConflict) {
+      throw new Error(
+        `El horario seleccionado (${reservationData.startTime} - ${reservationData.endTime}) ya está ocupado por otra reserva confirmada. Por favor, selecciona otro horario.`
+      );
+    }
 
     const reservationDoc = {
       ...reservationData,
@@ -446,6 +642,118 @@ export const createReservation = async (reservationData) => {
   } catch (error) {
     console.error("Error al crear reserva:", error);
     throw new Error(error.message || "Error al crear la reserva.");
+  }
+};
+
+// Actualizar el estado de una reserva con razón
+export const updateReservationStatus = async (reservationId, newStatus, reason, changedBy) => {
+  try {
+    const user = auth.currentUser;
+    if (!user) throw new Error("No autenticado.");
+
+    const reservationRef = doc(db, "reservations", reservationId);
+    const reservationDoc = await getDoc(reservationRef);
+
+    if (!reservationDoc.exists()) {
+      throw new Error("La reserva no existe.");
+    }
+
+    const reservationData = reservationDoc.data();
+    const oldStatus = reservationData.status;
+
+    // Si se está cambiando a "confirmed", validar conflictos
+    if (newStatus === "confirmed") {
+      const conflictCheck = await checkReservationConflict(
+        reservationData.fieldId,
+        reservationData.date,
+        reservationData.startTime,
+        reservationData.endTime,
+        reservationId // Excluir la reserva actual
+      );
+
+      if (conflictCheck.hasConflict) {
+        throw new Error(
+          `No se puede confirmar esta reserva. El horario ya está ocupado por otra reserva confirmada.`
+        );
+      }
+    }
+
+    // Actualizar la reserva
+    await updateDoc(reservationRef, {
+      status: newStatus,
+      statusChangedAt: serverTimestamp(),
+      statusChangedBy: changedBy || user.uid,
+      statusChangeReason: reason || "",
+      previousStatus: oldStatus,
+      updatedAt: serverTimestamp(),
+    });
+
+    return {
+      success: true,
+      reservation: { id: reservationId, ...reservationData, status: newStatus },
+    };
+  } catch (error) {
+    console.error("Error al actualizar estado de reserva:", error);
+    throw new Error(error.message || "Error al actualizar el estado de la reserva.");
+  }
+};
+
+// Enviar notificación por correo de cambio de estado
+export const sendReservationStatusChangeEmail = async (
+  reservationData,
+  newStatus,
+  reason,
+  clientEmail,
+  clientName
+) => {
+  try {
+    const user = auth.currentUser;
+    if (!user) throw new Error("No autenticado.");
+
+    const token = await getIdToken(user);
+    const functionUrl =
+      "https://us-central1-goaltime-68101.cloudfunctions.net/sendReservationStatusChangeEmail";
+
+    const response = await fetch(functionUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        email: clientEmail,
+        reservationId: reservationData.id,
+        reservationData: reservationData,
+        newStatus: newStatus,
+        previousStatus: reservationData.previousStatus || reservationData.status,
+        reason: reason || "",
+        clientName: clientName || "Cliente",
+      }),
+    });
+
+    const contentType = response.headers.get("content-type");
+    let responseData;
+
+    if (contentType && contentType.includes("application/json")) {
+      responseData = await response.json();
+    } else {
+      const textResponse = await response.text();
+      console.error("Respuesta no-JSON recibida:", textResponse);
+      throw new Error(
+        textResponse ||
+          `Error del servidor (${response.status}). Por favor, verifica la configuración.`
+      );
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        responseData.error || responseData.details || `HTTP error! status: ${response.status}`
+      );
+    }
+    return responseData;
+  } catch (error) {
+    console.error("Error al enviar correo de cambio de estado:", error);
+    throw new Error(error.message || "Error al enviar la notificación por correo.");
   }
 };
 
@@ -681,6 +989,144 @@ export const notifyReservationCancelled = async (reservationId, fieldName, clien
     });
   } catch (error) {
     console.error("Error al crear notificación de reserva cancelada:", error);
+  }
+};
+
+// 👇 FUNCIONES PARA FAVORITOS
+
+// Agregar cancha a favoritos
+export const addToFavorites = async (fieldId) => {
+  try {
+    const user = auth.currentUser;
+    if (!user) throw new Error("No autenticado.");
+
+    const favoriteRef = doc(db, "favorites", `${user.uid}_${fieldId}`);
+    await setDoc(favoriteRef, {
+      userId: user.uid,
+      fieldId: fieldId,
+      createdAt: serverTimestamp(),
+    });
+    return true;
+  } catch (error) {
+    console.error("Error al agregar a favoritos:", error);
+    throw new Error(error.message || "Error al agregar a favoritos.");
+  }
+};
+
+// Remover cancha de favoritos
+export const removeFromFavorites = async (fieldId) => {
+  try {
+    const user = auth.currentUser;
+    if (!user) throw new Error("No autenticado.");
+
+    const favoriteRef = doc(db, "favorites", `${user.uid}_${fieldId}`);
+    await deleteDoc(favoriteRef);
+    return true;
+  } catch (error) {
+    console.error("Error al remover de favoritos:", error);
+    throw new Error(error.message || "Error al remover de favoritos.");
+  }
+};
+
+// Verificar si una cancha está en favoritos
+export const isFavorite = async (fieldId) => {
+  try {
+    const user = auth.currentUser;
+    if (!user) return false;
+
+    const favoriteRef = doc(db, "favorites", `${user.uid}_${fieldId}`);
+    const favoriteSnap = await getDoc(favoriteRef);
+    return favoriteSnap.exists();
+  } catch (error) {
+    console.error("Error al verificar favorito:", error);
+    return false;
+  }
+};
+
+// Obtener todas las canchas favoritas de un usuario
+export const getUserFavorites = async (userId) => {
+  try {
+    const favoritesQuery = query(collection(db, "favorites"), where("userId", "==", userId));
+    const favoritesSnap = await getDocs(favoritesQuery);
+    return favoritesSnap.docs.map((doc) => doc.data().fieldId);
+  } catch (error) {
+    console.error("Error al obtener favoritos:", error);
+    return [];
+  }
+};
+
+// Suscribirse a cambios en favoritos de un usuario
+export const subscribeToFavorites = (userId, callback) => {
+  try {
+    const favoritesQuery = query(collection(db, "favorites"), where("userId", "==", userId));
+    return onSnapshot(
+      favoritesQuery,
+      (snapshot) => {
+        const favoriteIds = snapshot.docs.map((doc) => doc.data().fieldId);
+        callback(favoriteIds);
+      },
+      (error) => {
+        console.error("Error en suscripción a favoritos:", error);
+        callback([]);
+      }
+    );
+  } catch (error) {
+    console.error("Error al suscribirse a favoritos:", error);
+    return () => {};
+  }
+};
+
+// 👇 FUNCIÓN PARA ENVIAR TICKET POR CORREO
+
+export const sendTicketByEmail = async (ticketData) => {
+  try {
+    const user = auth.currentUser;
+    if (!user) throw new Error("No autenticado.");
+
+    const token = await getIdToken(user);
+    const functionUrl = "https://us-central1-goaltime-68101.cloudfunctions.net/sendTicketByEmail";
+
+    const response = await fetch(functionUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(ticketData),
+    });
+
+    // Verificar el Content-Type antes de parsear JSON
+    const contentType = response.headers.get("content-type");
+    let responseData;
+
+    if (contentType && contentType.includes("application/json")) {
+      responseData = await response.json();
+    } else {
+      // Si no es JSON, leer como texto para ver el error
+      const textResponse = await response.text();
+      console.error("Respuesta no-JSON recibida:", textResponse);
+      throw new Error(
+        textResponse ||
+          `Error del servidor (${response.status}). Por favor, verifica la configuración de SendGrid.`
+      );
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        responseData.error || responseData.details || `HTTP error! status: ${response.status}`
+      );
+    }
+    return responseData;
+  } catch (error) {
+    console.error("Error al enviar ticket por correo:", error);
+    // Si el error ya tiene un mensaje descriptivo, usarlo; si no, usar uno genérico
+    if (error.message && !error.message.includes("JSON")) {
+      throw error;
+    }
+    throw new Error(
+      error.message ||
+        "Error al enviar el ticket por correo. Verifica la configuración de SendGrid."
+    );
   }
 };
 

@@ -9,29 +9,15 @@ import useDebounce from "hooks/useDebounce";
 
 import MDBox from "components/MDBox";
 import MDTypography from "components/MDTypography";
-import MDBadge from "components/MDBadge";
+import MDButton from "components/MDButton";
+import Chip from "@mui/material/Chip";
 import Icon from "@mui/material/Icon";
-import IconButton from "@mui/material/IconButton";
-import Menu from "@mui/material/Menu";
-import MenuItem from "@mui/material/MenuItem";
 
 export default function useFieldsTableData(searchTerm, statusFilter, onEditField, onToggleDisable) {
   const [fields, setFields] = useState([]);
   const [loading, setLoading] = useState(true);
   const { userProfile } = useAuth();
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
-  const [anchorEl, setAnchorEl] = useState(null);
-  const [currentFieldMenu, setCurrentFieldMenu] = useState(null);
-
-  const handleMenuOpen = (event, field) => {
-    setAnchorEl(event.currentTarget);
-    setCurrentFieldMenu(field);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-    setCurrentFieldMenu(null);
-  };
 
   useEffect(() => {
     if (!userProfile) {
@@ -131,11 +117,11 @@ export default function useFieldsTableData(searchTerm, statusFilter, onEditField
       ),
       estado: (
         <MDBox ml={-1}>
-          <MDBadge
-            badgeContent={getStatusText(field.status)}
+          <Chip
+            label={getStatusText(field.status)}
             color={getStatusColor(field.status)}
-            variant="gradient"
-            size="sm"
+            size="small"
+            sx={{ fontWeight: "bold" }}
           />
         </MDBox>
       ),
@@ -147,33 +133,34 @@ export default function useFieldsTableData(searchTerm, statusFilter, onEditField
         </MDTypography>
       ),
       acciones: (
-        <>
-          <IconButton size="small" onClick={(event) => handleMenuOpen(event, field)}>
-            <Icon>more_vert</Icon>
-          </IconButton>
-          <Menu
-            anchorEl={anchorEl}
-            open={Boolean(anchorEl) && currentFieldMenu?.id === field.id}
-            onClose={handleMenuClose}
+        <MDBox display="flex" gap={1} justifyContent="center" flexWrap="wrap">
+          <MDButton
+            variant="outlined"
+            color="info"
+            size="small"
+            onClick={() => {
+              if (onEditField) onEditField(field);
+            }}
           >
-            <MenuItem
-              onClick={() => {
-                if (onEditField) onEditField(currentFieldMenu);
-                handleMenuClose();
-              }}
-            >
-              Editar Cancha
-            </MenuItem>
-            <MenuItem
-              onClick={() => {
-                if (onToggleDisable) onToggleDisable(currentFieldMenu);
-                handleMenuClose();
-              }}
-            >
-              {field.status === "disabled" ? "Habilitar Cancha" : "Deshabilitar Cancha"}
-            </MenuItem>
-          </Menu>
-        </>
+            <Icon fontSize="small" sx={{ mr: 0.5 }}>
+              edit
+            </Icon>
+            Editar
+          </MDButton>
+          <MDButton
+            variant="outlined"
+            color={field.status === "disabled" ? "success" : "error"}
+            size="small"
+            onClick={() => {
+              if (onToggleDisable) onToggleDisable(field);
+            }}
+          >
+            <Icon fontSize="small" sx={{ mr: 0.5 }}>
+              {field.status === "disabled" ? "check_circle" : "cancel"}
+            </Icon>
+            {field.status === "disabled" ? "Habilitar" : "Deshabilitar"}
+          </MDButton>
+        </MDBox>
       ),
     };
   });

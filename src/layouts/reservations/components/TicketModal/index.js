@@ -1,6 +1,6 @@
 // src/layouts/reservations/components/TicketModal/index.js
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import PropTypes from "prop-types";
 import Dialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
@@ -15,9 +15,13 @@ import Icon from "@mui/material/Icon";
 import MDBox from "components/MDBox";
 import MDTypography from "components/MDTypography";
 import MDButton from "components/MDButton";
+import MDSnackbar from "components/MDSnackbar";
+import { sendTicketByEmail } from "services/firebaseService";
 
 function TicketModal({ open, onClose, reservation, userProfile }) {
   const ticketRef = useRef(null);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, color: "info", message: "" });
 
   const formatDate = (dateValue) => {
     if (!dateValue) return "N/A";
@@ -83,6 +87,246 @@ function TicketModal({ open, onClose, reservation, userProfile }) {
     return statusMap[status] || status;
   };
 
+  const handleSendEmail = async () => {
+    if (!reservation || !userProfile?.email) {
+      setSnackbar({
+        open: true,
+        color: "error",
+        message: "No se puede enviar el ticket. Información incompleta.",
+      });
+      return;
+    }
+
+    setSendingEmail(true);
+    try {
+      // Generar el HTML del ticket
+      const ticketHTML = generateTicketHTML();
+
+      await sendTicketByEmail({
+        email: userProfile.email,
+        reservationId: reservation.id,
+        reservationData: reservation,
+        userProfile: userProfile,
+        ticketHTML: ticketHTML,
+      });
+
+      setSnackbar({
+        open: true,
+        color: "success",
+        message: "Ticket enviado exitosamente a tu correo electrónico.",
+      });
+    } catch (error) {
+      console.error("Error al enviar ticket por correo:", error);
+      setSnackbar({
+        open: true,
+        color: "error",
+        message: error.message || "Error al enviar el ticket. Inténtalo de nuevo.",
+      });
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
+  const generateTicketHTML = () => {
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Ticket de Reserva - ${reservation?.fieldName || "Cancha"}</title>
+          <style>
+            @page {
+              size: A4;
+              margin: 10mm;
+            }
+            body {
+              font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+              margin: 0;
+              padding: 10px;
+              color: #333;
+            }
+            .ticket-container {
+              max-width: 100%;
+              margin: 0 auto;
+              background: white;
+              border: 2px solid #e0e0e0;
+              border-radius: 8px;
+              padding: 15px;
+            }
+            .ticket-header {
+              text-align: center;
+              border-bottom: 2px solid #1976d2;
+              padding-bottom: 10px;
+              margin-bottom: 15px;
+            }
+            .ticket-header h1 {
+              color: #1976d2;
+              margin: 0 0 5px 0;
+              font-size: 22px;
+            }
+            .ticket-header p {
+              color: #666;
+              margin: 0;
+              font-size: 12px;
+            }
+            .ticket-section {
+              margin-bottom: 12px;
+            }
+            .ticket-section h3 {
+              color: #1976d2;
+              font-size: 14px;
+              margin-bottom: 8px;
+              border-bottom: 1px solid #e0e0e0;
+              padding-bottom: 4px;
+            }
+            .ticket-row {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 6px;
+              padding: 4px 0;
+              font-size: 12px;
+            }
+            .ticket-label {
+              font-weight: 600;
+              color: #555;
+            }
+            .ticket-value {
+              color: #333;
+              text-align: right;
+            }
+            .ticket-status {
+              display: inline-block;
+              padding: 4px 12px;
+              border-radius: 15px;
+              font-weight: 600;
+              font-size: 11px;
+              margin-top: 5px;
+            }
+            .ticket-footer {
+              margin-top: 15px;
+              padding-top: 10px;
+              border-top: 1px solid #e0e0e0;
+              text-align: center;
+              color: #666;
+              font-size: 10px;
+            }
+            .ticket-qr-placeholder {
+              width: 100px;
+              height: 100px;
+              border: 2px dashed #ccc;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              margin: 10px auto;
+              border-radius: 6px;
+              background: #f5f5f5;
+              font-size: 10px;
+            }
+            .ticket-qr-placeholder p {
+              margin: 0;
+              text-align: center;
+              line-height: 1.3;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="ticket-container">
+            <div class="ticket-header">
+              <h1>GoalTime</h1>
+              <p>Ticket de Reserva Deportiva</p>
+            </div>
+            
+            <div class="ticket-section">
+              <h3>Información de la Reserva</h3>
+              <div class="ticket-row">
+                <span class="ticket-label">Número de Reserva:</span>
+                <span class="ticket-value">#${
+                  reservation?.id?.substring(0, 8).toUpperCase() || "N/A"
+                }</span>
+              </div>
+              <div class="ticket-row">
+                <span class="ticket-label">Fecha de Reserva:</span>
+                <span class="ticket-value">${formatDate(reservation?.date)}</span>
+              </div>
+              <div class="ticket-row">
+                <span class="ticket-label">Hora:</span>
+                <span class="ticket-value">${reservation?.startTime || "N/A"} - ${
+      reservation?.endTime || "N/A"
+    }</span>
+              </div>
+              <div class="ticket-row">
+                <span class="ticket-label">Estado:</span>
+                <span class="ticket-value">
+                  <span class="ticket-status" style="background-color: ${
+                    getReservationStatusColor(reservation?.status) === "success"
+                      ? "#4caf50"
+                      : getReservationStatusColor(reservation?.status) === "warning"
+                      ? "#ff9800"
+                      : getReservationStatusColor(reservation?.status) === "error"
+                      ? "#f44336"
+                      : "#9e9e9e"
+                  }; color: white;">
+                    ${getReservationStatusText(reservation?.status)}
+                  </span>
+                </span>
+              </div>
+            </div>
+
+            <div class="ticket-section">
+              <h3>Información de la Cancha</h3>
+              <div class="ticket-row">
+                <span class="ticket-label">Nombre:</span>
+                <span class="ticket-value">${reservation?.fieldName || "N/A"}</span>
+              </div>
+              <div class="ticket-row">
+                <span class="ticket-label">Dirección:</span>
+                <span class="ticket-value">${reservation?.fieldAddress || "N/A"}</span>
+              </div>
+            </div>
+
+            <div class="ticket-section">
+              <h3>Información del Cliente</h3>
+              <div class="ticket-row">
+                <span class="ticket-label">Nombre:</span>
+                <span class="ticket-value">${userProfile?.name || "N/A"}</span>
+              </div>
+              <div class="ticket-row">
+                <span class="ticket-label">Email:</span>
+                <span class="ticket-value">${userProfile?.email || "N/A"}</span>
+              </div>
+            </div>
+
+            <div class="ticket-section">
+              <h3>Información de Pago</h3>
+              <div class="ticket-row">
+                <span class="ticket-label">Total Pagado:</span>
+                <span class="ticket-value" style="font-size: 20px; font-weight: bold; color: #4caf50;">
+                  $${reservation?.totalPrice || "0"}
+                </span>
+              </div>
+              <div class="ticket-row">
+                <span class="ticket-label">Fecha de Creación:</span>
+                <span class="ticket-value">${
+                  reservation?.createdAt ? formatDateTime(reservation.createdAt) : "N/A"
+                }</span>
+              </div>
+            </div>
+
+            <div class="ticket-qr-placeholder">
+              <p style="color: #999; font-size: 12px;">Código QR<br/>(${
+                reservation?.id?.substring(0, 8).toUpperCase() || "N/A"
+              })</p>
+            </div>
+
+            <div class="ticket-footer">
+              <p>© ${new Date().getFullYear()} GoalTime. Todos los derechos reservados.</p>
+              <p>Este ticket es válido para la fecha y hora indicadas.</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+  };
+
   const handleDownloadPDF = () => {
     if (!ticketRef.current) return;
 
@@ -101,7 +345,7 @@ function TicketModal({ open, onClose, reservation, userProfile }) {
               margin: 10mm;
             }
             body {
-              font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
+              font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
               margin: 0;
               padding: 10px;
               color: #333;
@@ -540,7 +784,7 @@ function TicketModal({ open, onClose, reservation, userProfile }) {
       </DialogContent>
       <MDBox
         display="flex"
-        justifyContent="flex-end"
+        justifyContent="space-between"
         gap={2}
         p={2}
         borderTop="1px solid"
@@ -549,11 +793,35 @@ function TicketModal({ open, onClose, reservation, userProfile }) {
         <MDButton variant="outlined" color="secondary" onClick={onClose}>
           Cerrar
         </MDButton>
-        <MDButton variant="gradient" color="info" onClick={handleDownloadPDF}>
-          <Icon sx={{ mr: 1 }}>download</Icon>
-          Descargar Ticket
-        </MDButton>
+        <MDBox display="flex" gap={2}>
+          <MDButton
+            variant="outlined"
+            color="info"
+            onClick={handleSendEmail}
+            disabled={sendingEmail}
+          >
+            <Icon sx={{ mr: 1 }}>{sendingEmail ? "hourglass_empty" : "email"}</Icon>
+            {sendingEmail ? "Enviando..." : "Enviar por Correo"}
+          </MDButton>
+          <MDButton variant="gradient" color="info" onClick={handleDownloadPDF}>
+            <Icon sx={{ mr: 1 }}>download</Icon>
+            Descargar Ticket
+          </MDButton>
+        </MDBox>
       </MDBox>
+
+      <MDSnackbar
+        color={snackbar.color}
+        icon={
+          snackbar.color === "success" ? "check" : snackbar.color === "error" ? "warning" : "info"
+        }
+        title="Ticket"
+        content={snackbar.message}
+        open={snackbar.open}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        close={() => setSnackbar({ ...snackbar, open: false })}
+        bgWhite={snackbar.color !== "info" && snackbar.color !== "dark"}
+      />
     </Dialog>
   );
 }

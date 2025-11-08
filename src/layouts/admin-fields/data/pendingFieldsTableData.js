@@ -8,8 +8,9 @@ import useDebounce from "hooks/useDebounce";
 
 import MDBox from "components/MDBox";
 import MDTypography from "components/MDTypography";
-import MDBadge from "components/MDBadge";
 import MDButton from "components/MDButton";
+import Chip from "@mui/material/Chip";
+import Icon from "@mui/material/Icon";
 
 export default function usePendingFieldsTableData(searchTerm, statusFilter, onApprove, onReject) {
   const [fields, setFields] = useState([]);
@@ -94,11 +95,11 @@ export default function usePendingFieldsTableData(searchTerm, statusFilter, onAp
       ),
       estado: (
         <MDBox ml={-1}>
-          <MDBadge
-            badgeContent={getStatusText(field.status)}
+          <Chip
+            label={getStatusText(field.status)}
             color={getStatusColor(field.status)}
-            variant="gradient"
-            size="sm"
+            size="small"
+            sx={{ fontWeight: "bold" }}
           />
         </MDBox>
       ),
@@ -110,7 +111,7 @@ export default function usePendingFieldsTableData(searchTerm, statusFilter, onAp
         </MDTypography>
       ),
       acciones: (
-        <MDBox display="flex" gap={1}>
+        <MDBox display="flex" gap={1} justifyContent="center" flexWrap="wrap">
           {field.status === "pending" && (
             <>
               <MDButton
@@ -119,6 +120,9 @@ export default function usePendingFieldsTableData(searchTerm, statusFilter, onAp
                 size="small"
                 onClick={() => onApprove(field)}
               >
+                <Icon fontSize="small" sx={{ mr: 0.5 }}>
+                  check
+                </Icon>
                 Aprobar
               </MDButton>
               <MDButton
@@ -127,6 +131,9 @@ export default function usePendingFieldsTableData(searchTerm, statusFilter, onAp
                 size="small"
                 onClick={() => onReject(field)}
               >
+                <Icon fontSize="small" sx={{ mr: 0.5 }}>
+                  close
+                </Icon>
                 Rechazar
               </MDButton>
             </>

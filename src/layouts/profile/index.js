@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Grid, Card, Divider, Chip, CircularProgress } from "@mui/material";
 import { collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
+import { subscribeToFavorites } from "services/firebaseService";
 import Icon from "@mui/material/Icon";
 
 // GoalTime App components
@@ -17,7 +18,6 @@ import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
 import DashboardNavbar from "examples/Navbars/DashboardNavbar";
 import Footer from "examples/Footer";
 import ProfileInfoCard from "examples/Cards/InfoCards/ProfileInfoCard";
-import SettingsModal from "./components/SettingsModal";
 
 // Context
 import { useAuth } from "context/AuthContext";
@@ -30,7 +30,17 @@ function Profile() {
   const { userProfile, currentUser } = useAuth();
   const [reservations, setReservations] = useState([]);
   const [loadingReservations, setLoadingReservations] = useState(true);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Estados para estadísticas
+  const [totalReservations, setTotalReservations] = useState(0);
+  const [activeReservations, setActiveReservations] = useState(0);
+  const [favoriteFieldsCount, setFavoriteFieldsCount] = useState(0);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [pendingFields, setPendingFields] = useState(0);
+  const [totalBookings, setTotalBookings] = useState(0);
+  const [myFieldsCount, setMyFieldsCount] = useState(0);
+  const [myApprovedFields, setMyApprovedFields] = useState(0);
+  const [receivedReservations, setReceivedReservations] = useState(0);
 
   const getRoleText = (role) => {
     const roleMap = {
@@ -50,7 +60,7 @@ function Profile() {
     return colorMap[role] || "dark";
   };
 
-  // Obtener reservaciones del usuario
+  // Obtener reservaciones del usuario (para clientes)
   useEffect(() => {
     if (!currentUser || userProfile?.role !== "cliente") {
       setLoadingReservations(false);
@@ -72,6 +82,14 @@ function Profile() {
           ...doc.data(),
         }));
         setReservations(reservationsData);
+
+        // Calcular estadísticas
+        setTotalReservations(reservationsData.length);
+        const active = reservationsData.filter(
+          (r) => r.status === "confirmed" || r.status === "pending"
+        ).length;
+        setActiveReservations(active);
+
         setLoadingReservations(false);
       },
       (error) => {
@@ -82,6 +100,98 @@ function Profile() {
 
     return () => unsubscribe();
   }, [currentUser, userProfile]);
+
+  // Obtener favoritos del usuario (para clientes)
+  useEffect(() => {
+    if (!currentUser || userProfile?.role !== "cliente") return;
+
+    const unsubscribe = subscribeToFavorites(currentUser.uid, (favoriteIds) => {
+      setFavoriteFieldsCount(favoriteIds.length);
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [currentUser, userProfile]);
+
+  // Obtener estadísticas para Admin
+  useEffect(() => {
+    if (!userProfile || userProfile.role !== "admin") return;
+
+    const unsubUsers = onSnapshot(query(collection(db, "users")), (snap) => {
+      setTotalUsers(snap.size);
+    });
+
+    const unsubPending = onSnapshot(
+      query(collection(db, "canchas"), where("status", "==", "pending")),
+      (snap) => setPendingFields(snap.size)
+    );
+
+    const unsubBookings = onSnapshot(query(collection(db, "reservations")), (snap) =>
+      setTotalBookings(snap.size)
+    );
+
+    return () => {
+      unsubUsers();
+      unsubPending();
+      unsubBookings();
+    };
+  }, [userProfile]);
+
+  // Obtener estadísticas para Asociado
+  useEffect(() => {
+    if (!userProfile || userProfile.role !== "asociado" || !currentUser) return;
+
+    let unsubAllReservations = null;
+
+    // Contar canchas del asociado
+    const myFieldsQuery = query(collection(db, "canchas"), where("ownerId", "==", currentUser.uid));
+    const unsubMyFields = onSnapshot(myFieldsQuery, (snap) => {
+      setMyFieldsCount(snap.size);
+    });
+
+    // Contar canchas aprobadas
+    const myApprovedQuery = query(
+      collection(db, "canchas"),
+      where("ownerId", "==", currentUser.uid),
+      where("status", "==", "approved")
+    );
+    const unsubMyApproved = onSnapshot(myApprovedQuery, (snap) => setMyApprovedFields(snap.size));
+
+    // Obtener reservas de las canchas del asociado
+    const unsubFieldsForReservations = onSnapshot(myFieldsQuery, (fieldsSnap) => {
+      const fieldIds = fieldsSnap.docs.map((doc) => doc.id);
+
+      // Limpiar suscripción anterior si existe
+      if (unsubAllReservations) {
+        unsubAllReservations();
+      }
+
+      if (fieldIds.length === 0) {
+        setReceivedReservations(0);
+        return;
+      }
+
+      // Obtener todas las reservas y filtrar en memoria
+      unsubAllReservations = onSnapshot(
+        query(collection(db, "reservations")),
+        (reservationsSnap) => {
+          const count = reservationsSnap.docs.filter((doc) => {
+            const reservation = doc.data();
+            return fieldIds.includes(reservation.fieldId);
+          }).length;
+          setReceivedReservations(count);
+        }
+      );
+    });
+
+    return () => {
+      unsubMyFields();
+      unsubMyApproved();
+      if (unsubFieldsForReservations) unsubFieldsForReservations();
+      if (unsubAllReservations) unsubAllReservations();
+    };
+  }, [userProfile, currentUser]);
 
   const getReservationStatusColor = (status) => {
     const statusMap = {
@@ -207,7 +317,14 @@ function Profile() {
               </Grid>
               <Grid item xs={12} md={6} lg={4} sx={{ ml: "auto" }}>
                 <MDBox display="flex" justifyContent="flex-end">
-                  <MDButton variant="gradient" color="info" size="small">
+                  <MDButton
+                    variant="gradient"
+                    color="info"
+                    size="small"
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent("openSettingsModal"));
+                    }}
+                  >
                     <Icon sx={{ mr: 1 }}>edit</Icon>
                     Editar Perfil
                   </MDButton>
@@ -240,7 +357,12 @@ function Profile() {
                   }),
                 }}
                 social={[]}
-                action={{ route: "/profile", tooltip: "Editar Perfil" }}
+                action={{
+                  tooltip: "Configuración",
+                  onClick: () => {
+                    window.dispatchEvent(new CustomEvent("openSettingsModal"));
+                  },
+                }}
                 shadow={true}
               />
             </Grid>
@@ -266,7 +388,7 @@ function Profile() {
                           Total Usuarios
                         </MDTypography>
                         <MDTypography variant="h6" fontWeight="bold" color="info">
-                          -
+                          {totalUsers}
                         </MDTypography>
                       </MDBox>
                       <MDBox
@@ -279,7 +401,7 @@ function Profile() {
                           Canchas Pendientes
                         </MDTypography>
                         <MDTypography variant="h6" fontWeight="bold" color="warning">
-                          -
+                          {pendingFields}
                         </MDTypography>
                       </MDBox>
                       <MDBox display="flex" justifyContent="space-between" alignItems="center">
@@ -287,7 +409,7 @@ function Profile() {
                           Total Reservas
                         </MDTypography>
                         <MDTypography variant="h6" fontWeight="bold" color="success">
-                          -
+                          {totalBookings}
                         </MDTypography>
                       </MDBox>
                     </MDBox>
@@ -304,7 +426,7 @@ function Profile() {
                           Mis Canchas
                         </MDTypography>
                         <MDTypography variant="h6" fontWeight="bold" color="info">
-                          -
+                          {myFieldsCount}
                         </MDTypography>
                       </MDBox>
                       <MDBox
@@ -317,7 +439,7 @@ function Profile() {
                           Canchas Aprobadas
                         </MDTypography>
                         <MDTypography variant="h6" fontWeight="bold" color="success">
-                          -
+                          {myApprovedFields}
                         </MDTypography>
                       </MDBox>
                       <MDBox display="flex" justifyContent="space-between" alignItems="center">
@@ -325,7 +447,7 @@ function Profile() {
                           Reservas Recibidas
                         </MDTypography>
                         <MDTypography variant="h6" fontWeight="bold" color="dark">
-                          -
+                          {receivedReservations}
                         </MDTypography>
                       </MDBox>
                     </MDBox>
@@ -342,7 +464,7 @@ function Profile() {
                           Mis Reservas
                         </MDTypography>
                         <MDTypography variant="h6" fontWeight="bold" color="info">
-                          -
+                          {totalReservations}
                         </MDTypography>
                       </MDBox>
                       <MDBox
@@ -355,7 +477,7 @@ function Profile() {
                           Reservas Activas
                         </MDTypography>
                         <MDTypography variant="h6" fontWeight="bold" color="success">
-                          -
+                          {activeReservations}
                         </MDTypography>
                       </MDBox>
                       <MDBox display="flex" justifyContent="space-between" alignItems="center">
@@ -363,7 +485,7 @@ function Profile() {
                           Canchas Favoritas
                         </MDTypography>
                         <MDTypography variant="h6" fontWeight="bold" color="warning">
-                          -
+                          {favoriteFieldsCount}
                         </MDTypography>
                       </MDBox>
                     </MDBox>
@@ -454,16 +576,6 @@ function Profile() {
                         </MDButton>
                       </>
                     )}
-                    <MDButton
-                      variant="outlined"
-                      color="secondary"
-                      fullWidth
-                      size="small"
-                      onClick={() => setSettingsOpen(true)}
-                    >
-                      <Icon sx={{ mr: 1 }}>settings</Icon>
-                      Configuración
-                    </MDButton>
                   </MDBox>
                 </MDBox>
               </Card>
@@ -568,6 +680,7 @@ function Profile() {
                                       color="text"
                                       fontWeight="medium"
                                       mb={1}
+                                      display="block"
                                     >
                                       Estado
                                     </MDTypography>
@@ -576,13 +689,16 @@ function Profile() {
                                       color={getReservationStatusColor(reservation.status)}
                                       size="small"
                                       variant="gradient"
+                                      sx={{ mb: 2 }}
                                     />
                                     {reservation.totalPrice && (
-                                      <MDBox mt={2}>
+                                      <MDBox>
                                         <MDTypography
                                           variant="caption"
                                           color="text"
                                           fontWeight="medium"
+                                          display="block"
+                                          mb={0.5}
                                         >
                                           Total
                                         </MDTypography>
@@ -626,8 +742,6 @@ function Profile() {
           )}
         </MDBox>
       </MDBox>
-
-      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
       <Footer />
     </DashboardLayout>
