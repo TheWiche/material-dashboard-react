@@ -42,6 +42,8 @@ function Cover() {
         return "Demasiados intentos. Por favor, espera unos minutos antes de intentar nuevamente.";
       case "auth/unauthorized-domain":
         return "El dominio no está autorizado. Por favor, contacta al administrador.";
+      case "auth/unauthorized-continue-uri":
+        return "La URL de redirección no está autorizada. Verifica que el dominio esté autorizado en Firebase Console.";
       case "auth/invalid-continue-uri":
         return "La URL de redirección no es válida. Por favor, contacta al administrador.";
       case "auth/missing-continue-uri":

@@ -107,13 +107,32 @@ export const sendPasswordReset = async (email) => {
   try {
     // Firebase redirigirá a esta URL con el parámetro oobCode
     // La URL debe estar autorizada en Firebase Console > Authentication > Settings > Authorized domains
-    const continueUrl = `${window.location.origin}/authentication/reset-password/confirm`;
+    // IMPORTANTE: En producción, debe usar HTTPS y el dominio debe estar autorizado
+
+    let continueUrl;
+
+    // Determinar la URL correcta según el entorno
+    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+      // Desarrollo: usar HTTP
+      continueUrl = `${window.location.origin}/authentication/reset-password/confirm`;
+    } else {
+      // Producción: forzar HTTPS (Firebase requiere HTTPS para dominios de producción)
+      // Remover 'www.' del hostname si está presente, ya que Firebase autoriza el dominio base
+      let hostname = window.location.hostname;
+      if (hostname.startsWith("www.")) {
+        hostname = hostname.replace(/^www\./, "");
+      }
+      const port = window.location.port ? `:${window.location.port}` : "";
+      continueUrl = `https://${hostname}${port}/authentication/reset-password/confirm`;
+    }
 
     console.log("Enviando email de restablecimiento de contraseña:");
     console.log("- Email:", email);
     console.log("- Continue URL:", continueUrl);
     console.log("- Origin:", window.location.origin);
     console.log("- Hostname:", window.location.hostname);
+    console.log("- Protocol:", window.location.protocol);
+    console.log("- Full URL:", window.location.href);
 
     await sendPasswordResetEmail(auth, email, {
       url: continueUrl,
@@ -127,6 +146,18 @@ export const sendPasswordReset = async (email) => {
     console.error("- Error code:", error.code);
     console.error("- Error message:", error.message);
     console.error("- Error details:", error);
+
+    // Si es un error de URL no autorizada, proporcionar más información
+    if (error.code === "auth/unauthorized-continue-uri") {
+      console.error("⚠️ SOLUCIÓN REQUERIDA:");
+      console.error("   1. Ve a Firebase Console > Authentication > Settings > Authorized domains");
+      console.error("   2. Asegúrate de que el dominio esté autorizado:");
+      console.error("      - goaltime.site");
+      console.error("      - www.goaltime.site (si usas www)");
+      console.error("   3. La URL debe usar HTTPS en producción");
+      console.error("   URL que intentó usar:", continueUrl);
+    }
+
     throw error;
   }
 };
