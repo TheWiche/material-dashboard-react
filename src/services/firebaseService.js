@@ -117,11 +117,9 @@ export const sendPasswordReset = async (email) => {
       continueUrl = `${window.location.origin}/authentication/reset-password/confirm`;
     } else {
       // Producción: forzar HTTPS (Firebase requiere HTTPS para dominios de producción)
-      // Remover 'www.' del hostname si está presente, ya que Firebase autoriza el dominio base
-      let hostname = window.location.hostname;
-      if (hostname.startsWith("www.")) {
-        hostname = hostname.replace(/^www\./, "");
-      }
+      // Usar el hostname tal cual (con o sin www) para que funcione con ambos
+      // IMPORTANTE: Ambos dominios deben estar autorizados en Firebase Console
+      const hostname = window.location.hostname;
       const port = window.location.port ? `:${window.location.port}` : "";
       continueUrl = `https://${hostname}${port}/authentication/reset-password/confirm`;
     }
