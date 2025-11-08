@@ -7,6 +7,7 @@ import AssociateFields from "layouts/associate-fields";
 import AssociateReservations from "layouts/associate-reservations";
 import Canchas from "layouts/canchas";
 import Profile from "layouts/profile";
+import Reservations from "layouts/reservations";
 import SignIn from "layouts/authentication/sign-in";
 import SignUp from "layouts/authentication/sign-up";
 import ResetPassword from "layouts/authentication/reset-password/cover";
@@ -98,6 +99,18 @@ const routes = [
     component: (
       <ProtectedRoute>
         <Canchas />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    type: "collapse",
+    name: "Mis Reservaciones",
+    key: "reservations",
+    icon: <Icon fontSize="small">event</Icon>,
+    route: "/reservations",
+    component: (
+      <ProtectedRoute>
+        <Reservations />
       </ProtectedRoute>
     ),
   },

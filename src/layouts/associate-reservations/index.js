@@ -433,7 +433,10 @@ function AssociateReservations() {
   return (
     <DashboardLayout>
       <DashboardNavbar />
-      <MDBox pt={6} pb={3}>
+      <MDBox pt={3} pb={3} px={3}>
+        <MDTypography variant="h4" fontWeight="bold" mb={3}>
+          Gestión de Reservas
+        </MDTypography>
         <Grid container spacing={6}>
           <Grid item xs={12}>
             <Card>
@@ -450,11 +453,7 @@ function AssociateReservations() {
                 display="flex"
                 justifyContent="space-between"
                 alignItems="center"
-              >
-                <MDTypography variant="h6" color="white">
-                  Gestión de Reservas
-                </MDTypography>
-              </MDBox>
+              ></MDBox>
 
               {/* Barra de Herramientas */}
               <MDBox p={2} display="flex" gap={2} flexWrap="wrap" alignItems="center">

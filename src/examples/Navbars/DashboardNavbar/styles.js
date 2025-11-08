@@ -90,16 +90,16 @@ const navbarContainer = ({ breakpoints }) => ({
 const navbarRow = ({ breakpoints }, { isMini }) => ({
   display: "flex",
   alignItems: "center",
-  justifyContent: "space-between",
+  justifyContent: "flex-end",
   width: "100%",
 
   [breakpoints.up("md")]: {
-    justifyContent: isMini ? "space-between" : "stretch",
+    justifyContent: isMini ? "space-between" : "flex-end",
     width: isMini ? "100%" : "max-content",
   },
 
   [breakpoints.up("xl")]: {
-    justifyContent: "stretch !important",
+    justifyContent: "flex-end !important",
     width: "max-content !important",
   },
 });

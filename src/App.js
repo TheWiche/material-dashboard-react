@@ -102,7 +102,10 @@ export default function App() {
       );
     } else if (userProfile.role === "asociado") {
       userRoutes = userRoutes.filter(
-        (route) => route.key !== "admin-users" && route.key !== "admin-fields"
+        (route) =>
+          route.key !== "admin-users" &&
+          route.key !== "admin-fields" &&
+          route.key !== "reservations"
       );
     } else if (userProfile.role === "admin") {
       // admin-fields ya no se muestra en el menú, la funcionalidad está en "Canchas"
@@ -110,7 +113,8 @@ export default function App() {
         (route) =>
           route.key !== "associate-fields" &&
           route.key !== "admin-fields" &&
-          route.key !== "associate-reservations"
+          route.key !== "associate-reservations" &&
+          route.key !== "reservations"
       );
     }
 
@@ -129,33 +133,20 @@ export default function App() {
       return null;
     });
 
-  const configsButton = (
-    <MDBox
-      display="flex"
-      justifyContent="center"
-      alignItems="center"
-      width="3.25rem"
-      height="3.25rem"
-      bgColor="white"
-      shadow="sm"
-      borderRadius="50%"
-      position="fixed"
-      right="2rem"
-      bottom="2rem"
-      zIndex={99}
-      color="dark"
-      sx={{ cursor: "pointer" }}
-      onClick={handleConfiguratorOpen}
-    >
-      <Icon fontSize="small" color="inherit">
-        settings
-      </Icon>
-    </MDBox>
-  );
+  // Determinar si se debe mostrar el sidebar
+  // Solo mostrar en rutas protegidas del dashboard, excluyendo páginas públicas y de autenticación
+  const shouldHideSidenav =
+    pathname === "/" ||
+    pathname.includes("/authentication") ||
+    pathname.includes("/__/auth") ||
+    pathname.includes("/politica-de-privacidad") ||
+    pathname.includes("/terminos-y-condiciones") ||
+    pathname.includes("/sobre-nosotros") ||
+    pathname.includes("/blog") ||
+    pathname.includes("/licencia") ||
+    pathname.includes("/convertirse-en-asociado");
 
-  // Esta lógica también está PERFECTA.
-  const showSidenav =
-    layout === "dashboard" && !pathname.includes("/authentication") && pathname !== "/";
+  const showSidenav = layout === "dashboard" && !shouldHideSidenav && userProfile;
 
   return (
     <ThemeProvider theme={darkMode ? themeDark : theme}>
@@ -171,7 +162,6 @@ export default function App() {
             onMouseLeave={handleOnMouseLeave}
           />
           <Configurator />
-          {configsButton}
         </>
       )}
       {layout === "vr" && <Configurator />}

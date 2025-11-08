@@ -200,7 +200,7 @@ function Canchas() {
   };
 
   const filterTitles = {
-    all: "Todas las Canchas",
+    all: "Canchas",
     approved: "Canchas Aprobadas",
     pending: "Canchas Pendientes",
     rejected: "Canchas Rechazadas",
@@ -334,10 +334,10 @@ function Canchas() {
   return (
     <DashboardLayout>
       <DashboardNavbar />
-      <MDBox py={3}>
-        <MDBox>
-          <MDBox display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-            <MDTypography variant="h4">
+      <MDBox py={3} px={3}>
+        <MDBox mb={3}>
+          <MDBox display="flex" justifyContent="space-between" alignItems="center">
+            <MDTypography variant="h4" fontWeight="bold">
               {userProfile?.role === "admin" ? filterTitles[statusFilter] : "Canchas Disponibles"}
             </MDTypography>
             {userProfile?.role === "admin" && (

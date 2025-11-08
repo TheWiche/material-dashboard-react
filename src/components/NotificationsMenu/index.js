@@ -46,15 +46,25 @@ function NotificationsMenu() {
 
   // Suscribirse a notificaciones en tiempo real
   useEffect(() => {
-    if (!currentUser?.uid) return;
+    if (!currentUser?.uid) {
+      console.log("NotificationsMenu: No hay usuario autenticado");
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
 
+    console.log("NotificationsMenu: Suscribiéndose a notificaciones para:", currentUser.uid);
     const unsubscribe = subscribeToNotifications(currentUser.uid, (notifs) => {
+      console.log("NotificationsMenu: Notificaciones actualizadas:", notifs.length);
       setNotifications(notifs);
       const unread = notifs.filter((n) => !n.read).length;
       setUnreadCount(unread);
     });
 
-    return () => unsubscribe();
+    return () => {
+      console.log("NotificationsMenu: Desuscribiéndose de notificaciones");
+      if (unsubscribe) unsubscribe();
+    };
   }, [currentUser]);
 
   const handleNotificationClick = async (notification) => {

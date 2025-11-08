@@ -512,28 +512,68 @@ export const markAllNotificationsAsRead = async (userId) => {
 
 // Obtener notificaciones en tiempo real (hook helper)
 export const subscribeToNotifications = (userId, callback) => {
-  if (!userId) return () => {};
+  if (!userId) {
+    console.warn("subscribeToNotifications: userId no proporcionado");
+    return () => {};
+  }
 
-  const notificationsQuery = query(
-    collection(db, "notifications"),
-    where("userId", "==", userId),
-    orderBy("createdAt", "desc")
-  );
+  try {
+    const notificationsQuery = query(
+      collection(db, "notifications"),
+      where("userId", "==", userId),
+      orderBy("createdAt", "desc")
+    );
 
-  return onSnapshot(
-    notificationsQuery,
-    (snapshot) => {
-      const notifications = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      callback(notifications);
-    },
-    (error) => {
-      console.error("Error al obtener notificaciones:", error);
-      callback([]);
-    }
-  );
+    return onSnapshot(
+      notificationsQuery,
+      (snapshot) => {
+        const notifications = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        console.log(`Notificaciones recibidas para usuario ${userId}:`, notifications.length);
+        callback(notifications);
+      },
+      (error) => {
+        console.error("Error al obtener notificaciones:", error);
+        // Si el error es por índice faltante, intentar sin orderBy
+        if (error.code === "failed-precondition" || error.message?.includes("index")) {
+          console.warn("Índice compuesto faltante. Obteniendo notificaciones sin ordenar...");
+          const simpleQuery = query(collection(db, "notifications"), where("userId", "==", userId));
+
+          const unsubscribeSimple = onSnapshot(
+            simpleQuery,
+            (snapshot) => {
+              const notifications = snapshot.docs
+                .map((doc) => ({
+                  id: doc.id,
+                  ...doc.data(),
+                }))
+                .sort((a, b) => {
+                  // Ordenar manualmente por fecha
+                  const dateA = a.createdAt?.seconds || a.createdAt?.toMillis?.() / 1000 || 0;
+                  const dateB = b.createdAt?.seconds || b.createdAt?.toMillis?.() / 1000 || 0;
+                  return dateB - dateA;
+                });
+              console.log(`Notificaciones recibidas (sin ordenar):`, notifications.length);
+              callback(notifications);
+            },
+            (simpleError) => {
+              console.error("Error al obtener notificaciones (sin ordenar):", simpleError);
+              callback([]);
+            }
+          );
+
+          // Retornar función de limpieza para la suscripción simple
+          return unsubscribeSimple;
+        }
+        callback([]);
+      }
+    );
+  } catch (error) {
+    console.error("Error al crear query de notificaciones:", error);
+    return () => {};
+  }
 };
 
 // Crear notificación cuando se aprueba una cancha
@@ -578,10 +618,10 @@ export const notifyReservationCreated = async (reservationId, fieldName, clientI
     await createNotification({
       userId: clientId,
       type: "reservation_created",
-      title: "Reserva Confirmada",
+      title: "Reserva Creada",
       message: `Tu reserva para "${fieldName}" ha sido creada exitosamente. El dueño de la cancha la revisará pronto.`,
       relatedId: reservationId,
-      actionUrl: "/profile",
+      actionUrl: "/reservations",
       icon: "event_available",
       color: "info",
     });
@@ -617,7 +657,7 @@ export const notifyReservationConfirmed = async (reservationId, fieldName, clien
       title: "Reserva Confirmada",
       message: `Tu reserva para "${fieldName}" ha sido confirmada por el dueño de la cancha.`,
       relatedId: reservationId,
-      actionUrl: "/profile",
+      actionUrl: "/reservations",
       icon: "check_circle",
       color: "success",
     });
@@ -635,7 +675,7 @@ export const notifyReservationCancelled = async (reservationId, fieldName, clien
       title: "Reserva Cancelada",
       message: `Tu reserva para "${fieldName}" ha sido cancelada por el dueño de la cancha.`,
       relatedId: reservationId,
-      actionUrl: "/profile",
+      actionUrl: "/reservations",
       icon: "cancel",
       color: "error",
     });

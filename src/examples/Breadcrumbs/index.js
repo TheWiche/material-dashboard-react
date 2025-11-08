@@ -39,10 +39,13 @@ const routeNameMap = {
   tables: "Tablas",
   billing: "Facturación",
   notifications: "Notificaciones",
+  reservations: "Mis Reservaciones",
 };
 
 function Breadcrumbs({ icon, title, route, light }) {
-  const routes = route.slice(0, -1);
+  // Asegurar que route sea un array
+  const routeArray = Array.isArray(route) ? route : route.split("/").filter(Boolean);
+  const routes = routeArray.slice(0, -1);
   const currentTitle = title.replace("-", " ");
   const displayTitle = routeNameMap[currentTitle.toLowerCase()] || currentTitle;
 

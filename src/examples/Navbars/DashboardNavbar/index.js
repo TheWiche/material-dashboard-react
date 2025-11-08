@@ -30,7 +30,6 @@ import MDTypography from "components/MDTypography"; // 👈 3. Se importa MDTypo
 import { useAuth } from "context/AuthContext"; // Para obtener los datos del usuario
 
 // GoalTime App example components
-import Breadcrumbs from "examples/Breadcrumbs";
 import NotificationsMenu from "components/NotificationsMenu";
 
 // Custom styles for DashboardNavbar
@@ -165,11 +164,25 @@ function DashboardNavbar({ absolute, light, isMini }) {
     >
       <Toolbar sx={(theme) => navbarContainer(theme)}>
         <MDBox color="inherit" sx={(theme) => navbarRow(theme, { isMini })} py={{ xs: 1.5, md: 2 }}>
-          <Breadcrumbs icon="home" title={route[route.length - 1]} route={route} light={light} />
+          {/* Breadcrumbs removido - cada página tiene su propio título */}
         </MDBox>
         {isMini ? null : (
-          <MDBox sx={(theme) => navbarRow(theme, { isMini })}>
-            <MDBox color={light ? "white" : "inherit"} display="flex" alignItems="center" gap={1}>
+          <MDBox
+            sx={(theme) => navbarRow(theme, { isMini })}
+            display="flex"
+            justifyContent="flex-end"
+            flex={1}
+          >
+            <MDBox
+              color={light ? "white" : "inherit"}
+              display="flex"
+              alignItems="center"
+              gap={1}
+              sx={{
+                ml: "auto",
+                flexShrink: 0,
+              }}
+            >
               <IconButton
                 size="small"
                 disableRipple

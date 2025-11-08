@@ -112,7 +112,10 @@ function AdminUsers() {
   return (
     <DashboardLayout>
       <DashboardNavbar />
-      <MDBox pt={6} pb={3}>
+      <MDBox pt={3} pb={3} px={3}>
+        <MDTypography variant="h4" fontWeight="bold" mb={3}>
+          Gestión de Usuarios
+        </MDTypography>
         <Grid container spacing={6}>
           <Grid item xs={12}>
             <Card>
@@ -130,9 +133,6 @@ function AdminUsers() {
                 justifyContent="space-between"
                 alignItems="center"
               >
-                <MDTypography variant="h6" color="white">
-                  Tabla de Usuarios
-                </MDTypography>
                 <MDButton variant="gradient" color="dark" onClick={handleOpenAddModal}>
                   <Icon sx={{ fontWeight: "bold" }}>add</Icon>
                   &nbsp;Crear Usuario

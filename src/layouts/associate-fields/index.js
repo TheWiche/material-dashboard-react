@@ -1,6 +1,7 @@
 // src/layouts/associate-fields/index.js
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import Grid from "@mui/material/Grid";
 import Card from "@mui/material/Card";
 import Icon from "@mui/material/Icon";
@@ -21,6 +22,8 @@ import { createField, updateField, toggleFieldStatus } from "services/firebaseSe
 import ConfirmationDialog from "layouts/admin-users/components/ConfirmationDialog";
 
 function AssociateFields() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -33,6 +36,7 @@ function AssociateFields() {
   const [snackbar, setSnackbar] = useState({ open: false, color: "info", message: "" });
   const [pageSize, setPageSize] = useState(10);
   const entriesOptions = [10, 25, 50];
+  const hasProcessedAddParam = useRef(false);
 
   // --- Manejadores de Modales y Acciones ---
   const handleEditField = (field) => {
@@ -77,7 +81,31 @@ function AssociateFields() {
 
   const closeSnackbar = () => setSnackbar({ ...snackbar, open: false });
   const handleOpenAddModal = () => setIsAddModalOpen(true);
-  const handleCloseAddModal = () => setIsAddModalOpen(false);
+  const handleCloseAddModal = () => {
+    setIsAddModalOpen(false);
+    // Limpiar el parámetro de la URL cuando se cierra el modal
+    if (location.search.includes("add=true")) {
+      navigate("/associate/fields", { replace: true });
+    }
+  };
+
+  // Detectar parámetro 'add' en la URL y abrir modal automáticamente
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const shouldAdd = searchParams.get("add") === "true";
+
+    if (shouldAdd && !isAddModalOpen && !hasProcessedAddParam.current) {
+      hasProcessedAddParam.current = true;
+      setIsAddModalOpen(true);
+      // Limpiar el parámetro de la URL
+      navigate("/associate/fields", { replace: true });
+    }
+
+    // Resetear la bandera cuando cambia el parámetro de la URL
+    if (!shouldAdd) {
+      hasProcessedAddParam.current = false;
+    }
+  }, [location.search, isAddModalOpen, navigate]);
 
   const handleCreateField = async (fieldData) => {
     setLoadingAction(true);
@@ -109,7 +137,10 @@ function AssociateFields() {
   return (
     <DashboardLayout>
       <DashboardNavbar />
-      <MDBox pt={6} pb={3}>
+      <MDBox pt={3} pb={3} px={3}>
+        <MDTypography variant="h4" fontWeight="bold" mb={3}>
+          Mis Canchas
+        </MDTypography>
         <Grid container spacing={6}>
           <Grid item xs={12}>
             <Card>
@@ -127,9 +158,6 @@ function AssociateFields() {
                 justifyContent="space-between"
                 alignItems="center"
               >
-                <MDTypography variant="h6" color="white">
-                  Mis Canchas
-                </MDTypography>
                 <MDButton variant="gradient" color="dark" onClick={handleOpenAddModal}>
                   <Icon sx={{ fontWeight: "bold" }}>add</Icon>
                   &nbsp;Registrar Cancha

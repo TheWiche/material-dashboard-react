@@ -260,7 +260,10 @@ function Dashboard() {
   return (
     <DashboardLayout>
       <DashboardNavbar />
-      <MDBox py={3}>
+      <MDBox py={3} px={3}>
+        <MDTypography variant="h4" fontWeight="bold" mb={3}>
+          Dashboard
+        </MDTypography>
         {/* Tarjetas de Estadísticas */}
         <Grid container spacing={3} mb={3}>
           {userProfile.role === "admin" && (
@@ -732,7 +735,7 @@ function Dashboard() {
                         color="info"
                         fullWidth
                         size="small"
-                        href="/associate/fields"
+                        onClick={() => navigate("/associate/fields")}
                       >
                         <Icon sx={{ mr: 1 }}>stadium</Icon>
                         Mis Canchas
@@ -742,7 +745,7 @@ function Dashboard() {
                         color="success"
                         fullWidth
                         size="small"
-                        href="/associate/fields"
+                        onClick={() => navigate("/associate/fields?add=true")}
                       >
                         <Icon sx={{ mr: 1 }}>add</Icon>
                         Agregar Cancha

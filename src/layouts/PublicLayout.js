@@ -4,15 +4,23 @@
  * para asegurar que tengan el mismo Header y Footer.
  * Reemplaza al 'HomepageLayout.js' y al 'PublicLayout.js' básico que tenías.
  */
-import React from "react";
+import React, { useEffect } from "react";
 import PropTypes from "prop-types";
 import { useLocation } from "react-router-dom";
 import MDBox from "components/MDBox";
 import HomepageHeader from "layouts/homepage/components/HomepageHeader";
 import HomepageFooter from "layouts/homepage/components/HomepageFooter";
+import { useMaterialUIController, setLayout } from "context";
 
 function PublicLayout({ children }) {
   const { pathname } = useLocation();
+  const [, dispatch] = useMaterialUIController();
+
+  // Establecer el layout a "page" para que no se muestre el sidebar
+  useEffect(() => {
+    setLayout(dispatch, "page");
+  }, [pathname, dispatch]);
+
   const isHeaderLight = pathname !== "/";
 
   return (

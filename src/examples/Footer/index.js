@@ -91,9 +91,9 @@ function Footer({ company, links }) {
 Footer.defaultProps = {
   company: { href: "#", name: "GoalTime" },
   links: [
-    { href: "/about-us", name: "Sobre Nosotros", isInternal: true },
+    { href: "/sobre-nosotros", name: "Sobre Nosotros", isInternal: true },
     { href: "/blog", name: "Blog", isInternal: true },
-    { href: "/license", name: "Licencia", isInternal: true },
+    { href: "/licencia", name: "Licencia", isInternal: true },
   ],
 };
 
