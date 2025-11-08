@@ -87,18 +87,38 @@ function ConfirmResetPassword() {
             continueUrl.includes("localhost") &&
             window.location.origin.includes("goaltime.site")
           ) {
-            // Reemplazar localhost con el dominio de producción
-            const productionUrl = continueUrl.replace(
+            // Reemplazar localhost con el dominio de producción (forzar www)
+            let productionUrl = continueUrl.replace(
               /http:\/\/localhost:\d+/,
               window.location.origin
             );
+            // Asegurar que use www en producción
+            if (productionUrl.includes("goaltime.site") && !productionUrl.includes("www.")) {
+              productionUrl = productionUrl.replace(
+                "https://goaltime.site",
+                "https://www.goaltime.site"
+              );
+            }
             window.location.href = `${productionUrl}?oobCode=${actionCode}`;
           } else {
-            window.location.href = `${continueUrl}?oobCode=${actionCode}`;
+            // Si el continueUrl no tiene www pero estamos en goaltime.site, agregarlo
+            let finalUrl = continueUrl;
+            if (continueUrl.includes("goaltime.site") && !continueUrl.includes("www.")) {
+              finalUrl = continueUrl.replace("https://goaltime.site", "https://www.goaltime.site");
+            }
+            window.location.href = `${finalUrl}?oobCode=${actionCode}`;
           }
         } else {
-          // Construir la URL de confirmación con el dominio actual
-          const confirmUrl = `${window.location.origin}/authentication/reset-password/confirm?oobCode=${actionCode}`;
+          // Construir la URL de confirmación con el dominio actual (forzar www en producción)
+          let confirmUrl;
+          if (
+            window.location.hostname.includes("goaltime.site") &&
+            !window.location.hostname.includes("www.")
+          ) {
+            confirmUrl = `https://www.goaltime.site/authentication/reset-password/confirm?oobCode=${actionCode}`;
+          } else {
+            confirmUrl = `${window.location.origin}/authentication/reset-password/confirm?oobCode=${actionCode}`;
+          }
           window.location.href = confirmUrl;
         }
         return;

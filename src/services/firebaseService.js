@@ -121,7 +121,7 @@ export const sendPasswordReset = async (email) => {
       // IMPORTANTE: Ambos dominios deben estar autorizados en Firebase Console
       const hostname = window.location.hostname;
       const port = window.location.port ? `:${window.location.port}` : "";
-      continueUrl = `https://${hostname}${port}/authentication/reset-password/confirm`;
+      continueUrl = `https://www.${hostname}${port}/authentication/reset-password/confirm`;
     }
 
     console.log("Enviando email de restablecimiento de contraseña:");

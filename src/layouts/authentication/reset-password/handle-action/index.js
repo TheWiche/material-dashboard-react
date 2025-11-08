@@ -32,18 +32,29 @@ function HandleFirebaseAction() {
       if (continueUrl && continueUrl.startsWith("http")) {
         // Si el continueUrl apunta a localhost pero estamos en producción, reemplazarlo
         if (continueUrl.includes("localhost") && window.location.origin.includes("goaltime.site")) {
-          redirectUrl = continueUrl.replace(/http:\/\/localhost:\d+/, window.location.origin);
+          redirectUrl = continueUrl.replace(/http:\/\/localhost:\d+/, "https://www.goaltime.site");
           redirectUrl = `${redirectUrl}${redirectUrl.includes("?") ? "&" : "?"}oobCode=${oobCode}`;
         } else if (continueUrl.includes("localhost") && window.location.hostname === "localhost") {
           // Si estamos en localhost y el continueUrl también es localhost, usarlo tal cual
           redirectUrl = `${continueUrl}${continueUrl.includes("?") ? "&" : "?"}oobCode=${oobCode}`;
         } else {
-          // Usar el continueUrl tal cual
-          redirectUrl = `${continueUrl}${continueUrl.includes("?") ? "&" : "?"}oobCode=${oobCode}`;
+          // Si el continueUrl no tiene www pero estamos en goaltime.site, agregarlo
+          let finalUrl = continueUrl;
+          if (continueUrl.includes("goaltime.site") && !continueUrl.includes("www.")) {
+            finalUrl = continueUrl.replace("https://goaltime.site", "https://www.goaltime.site");
+          }
+          redirectUrl = `${finalUrl}${finalUrl.includes("?") ? "&" : "?"}oobCode=${oobCode}`;
         }
       } else {
-        // Construir la URL de confirmación con el dominio actual
-        redirectUrl = `${window.location.origin}/authentication/reset-password/confirm?oobCode=${oobCode}`;
+        // Construir la URL de confirmación con el dominio actual (forzar www en producción)
+        if (
+          window.location.hostname.includes("goaltime.site") &&
+          !window.location.hostname.includes("www.")
+        ) {
+          redirectUrl = `https://www.goaltime.site/authentication/reset-password/confirm?oobCode=${oobCode}`;
+        } else {
+          redirectUrl = `${window.location.origin}/authentication/reset-password/confirm?oobCode=${oobCode}`;
+        }
       }
 
       console.log("Firebase Action Handler - Redirigiendo a:", redirectUrl);
