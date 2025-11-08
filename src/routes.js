@@ -11,6 +11,7 @@ import SignIn from "layouts/authentication/sign-in";
 import SignUp from "layouts/authentication/sign-up";
 import ResetPassword from "layouts/authentication/reset-password/cover";
 import ConfirmResetPassword from "layouts/authentication/reset-password/confirm";
+import HandleFirebaseAction from "layouts/authentication/reset-password/handle-action";
 import AboutUs from "layouts/about-us";
 import Blog from "layouts/blog";
 import License from "layouts/license";
@@ -154,6 +155,11 @@ const routes = [
         <ConfirmResetPassword />
       </GuestRoute>
     ),
+  },
+  {
+    key: "handle-firebase-action",
+    route: "/__/auth/action",
+    component: <HandleFirebaseAction />,
   },
 
   // --- Rutas Públicas (Visibles para TODOS, pero no en el menú) ---

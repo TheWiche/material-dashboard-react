@@ -76,7 +76,8 @@ export default function App() {
           route.key === "sign-in" ||
           route.key === "sign-up" ||
           route.key === "reset-password" ||
-          route.key === "confirm-reset-password"
+          route.key === "confirm-reset-password" ||
+          route.key === "handle-firebase-action"
       );
     }
 
@@ -86,7 +87,8 @@ export default function App() {
         route.key !== "sign-up" &&
         route.key !== "rtl" &&
         route.key !== "reset-password" &&
-        route.key !== "confirm-reset-password"
+        route.key !== "confirm-reset-password" &&
+        route.key !== "handle-firebase-action"
     );
 
     if (userProfile.role === "cliente") {

@@ -70,6 +70,40 @@ function ConfirmResetPassword() {
     console.log("oobCode encontrado:", oobCode);
     console.log("URL completa:", window.location.href);
     console.log("Hash:", window.location.hash);
+    console.log("Pathname:", window.location.pathname);
+
+    // Si estamos en la página de acción de Firebase (/__/auth/action), extraer el oobCode y redirigir
+    if (window.location.pathname === "/__/auth/action") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const actionCode = urlParams.get("oobCode");
+      const continueUrl = urlParams.get("continueUrl");
+
+      if (actionCode) {
+        console.log("Encontrado oobCode en /__/auth/action, redirigiendo...");
+        // Si hay continueUrl y es válida, usarla; si no, construir la URL correcta
+        if (continueUrl && continueUrl.startsWith("http")) {
+          // Verificar si el continueUrl apunta a localhost pero estamos en producción
+          if (
+            continueUrl.includes("localhost") &&
+            window.location.origin.includes("goaltime.site")
+          ) {
+            // Reemplazar localhost con el dominio de producción
+            const productionUrl = continueUrl.replace(
+              /http:\/\/localhost:\d+/,
+              window.location.origin
+            );
+            window.location.href = `${productionUrl}?oobCode=${actionCode}`;
+          } else {
+            window.location.href = `${continueUrl}?oobCode=${actionCode}`;
+          }
+        } else {
+          // Construir la URL de confirmación con el dominio actual
+          const confirmUrl = `${window.location.origin}/authentication/reset-password/confirm?oobCode=${actionCode}`;
+          window.location.href = confirmUrl;
+        }
+        return;
+      }
+    }
 
     // Obtener el código actualizado
     const currentCode = getOobCodeFromUrl();
