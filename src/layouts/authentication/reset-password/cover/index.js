@@ -40,8 +40,16 @@ function Cover() {
         return "El correo electrónico no es válido.";
       case "auth/too-many-requests":
         return "Demasiados intentos. Por favor, espera unos minutos antes de intentar nuevamente.";
+      case "auth/unauthorized-domain":
+        return "El dominio no está autorizado. Por favor, contacta al administrador.";
+      case "auth/invalid-continue-uri":
+        return "La URL de redirección no es válida. Por favor, contacta al administrador.";
+      case "auth/missing-continue-uri":
+        return "Falta la URL de redirección. Por favor, contacta al administrador.";
       default:
-        return "Ocurrió un error. Por favor, inténtalo más tarde.";
+        return `Ocurrió un error (${
+          errorCode || "desconocido"
+        }). Por favor, inténtalo más tarde o contacta al administrador.`;
     }
   };
 
@@ -59,7 +67,9 @@ function Cover() {
 
     setIsLoading(true);
     try {
+      console.log("Iniciando solicitud de restablecimiento de contraseña para:", email);
       await sendPasswordReset(email);
+      console.log("Solicitud de restablecimiento exitosa");
       setEmailSent(true);
       setSnackbar({
         open: true,
@@ -68,10 +78,16 @@ function Cover() {
           "Se ha enviado un correo electrónico con las instrucciones para restablecer tu contraseña.",
       });
     } catch (error) {
+      console.error("Error en handleSubmit:", error);
+      console.error("- Error code:", error.code);
+      console.error("- Error message:", error.message);
+      console.error("- Full error:", error);
+
+      const errorMessage = getFriendlyErrorMessage(error.code);
       setSnackbar({
         open: true,
         color: "error",
-        message: getFriendlyErrorMessage(error.code),
+        message: errorMessage,
       });
     } finally {
       setIsLoading(false);

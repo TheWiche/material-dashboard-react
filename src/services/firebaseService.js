@@ -107,13 +107,26 @@ export const sendPasswordReset = async (email) => {
   try {
     // Firebase redirigirá a esta URL con el parámetro oobCode
     // La URL debe estar autorizada en Firebase Console > Authentication > Settings > Authorized domains
+    const continueUrl = `${window.location.origin}/authentication/reset-password/confirm`;
+
+    console.log("Enviando email de restablecimiento de contraseña:");
+    console.log("- Email:", email);
+    console.log("- Continue URL:", continueUrl);
+    console.log("- Origin:", window.location.origin);
+    console.log("- Hostname:", window.location.hostname);
+
     await sendPasswordResetEmail(auth, email, {
-      url: `${window.location.origin}/authentication/reset-password/confirm`,
+      url: continueUrl,
       handleCodeInApp: false, // Firebase maneja la redirección y pasa el oobCode como parámetro
     });
+
+    console.log("Email de restablecimiento enviado exitosamente");
     return { success: true };
   } catch (error) {
     console.error("Error al enviar email de restablecimiento:", error);
+    console.error("- Error code:", error.code);
+    console.error("- Error message:", error.message);
+    console.error("- Error details:", error);
     throw error;
   }
 };
