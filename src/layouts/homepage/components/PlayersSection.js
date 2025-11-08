@@ -1,0 +1,188 @@
+// src/layouts/homepage/components/PlayersSection.js
+
+import React from "react";
+import { motion, useInView } from "framer-motion";
+import { Container, Grid, Card } from "@mui/material";
+import Icon from "@mui/material/Icon";
+import MDBox from "components/MDBox";
+import MDTypography from "components/MDTypography";
+import PropTypes from "prop-types";
+import MDButton from "components/MDButton";
+
+// Componente reutilizable para los íconos de características
+function FeatureIcon({ color, children }) {
+  return (
+    <MDBox
+      display="inline-flex"
+      justifyContent="center"
+      alignItems="center"
+      width="4rem"
+      height="4rem"
+      bgColor={color} // bgColor SÍ acepta colores personalizados
+      color="white"
+      variant="gradient"
+      borderRadius="lg"
+      mb={2}
+    >
+      <Icon fontSize="large">{children}</Icon>
+    </MDBox>
+  );
+}
+
+FeatureIcon.propTypes = {
+  color: PropTypes.string.isRequired,
+  children: PropTypes.node.isRequired,
+};
+
+// Variantes de animación
+const sectionVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
+};
+const itemVariants = {
+  hidden: { y: 20, opacity: 0 },
+  visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } },
+};
+
+// Datos de las tarjetas
+const features = [
+  {
+    icon: "search",
+    title: "Búsqueda Fácil",
+    description: "Encuentra canchas por deporte, ubicación y disponibilidad en segundos.",
+    color: "info",
+  },
+  {
+    icon: "event_available",
+    title: "Reserva Instantánea",
+    description: "Confirma tu reserva al instante sin llamadas ni esperas.",
+    color: "success",
+  },
+  {
+    icon: "location_on",
+    title: "Cerca de Ti",
+    description: "Descubre las mejores canchas en tu área con mapas integrados.",
+    color: "primary",
+  },
+  {
+    icon: "schedule",
+    title: "Horarios Flexibles",
+    description: "Reserva en el horario que mejor se adapte a tu agenda.",
+    color: "secondary",
+  },
+  {
+    icon: "sports_soccer",
+    title: "Múltiples Deportes",
+    description: "Fútbol, pádel, baloncesto, tenis y más en una sola plataforma.",
+    color: "warning",
+  },
+  {
+    icon: "verified_user",
+    title: "Reseñas Verificadas",
+    description: "Lee opiniones de otros jugadores para elegir la mejor opción.",
+    color: "error",
+  },
+];
+
+function PlayersSection() {
+  const { currentUser } = require("context/AuthContext");
+  const ref = React.useRef(null);
+  const isInView = useInView(ref, { once: true, amount: 0.2 });
+
+  return (
+    <MDBox id="jugadores" ref={ref} component="section" py={8} bgColor="white">
+      <Container>
+        <motion.div
+          variants={sectionVariants}
+          initial="hidden"
+          animate={isInView ? "visible" : "hidden"}
+        >
+          {/* Cabecera de la Sección */}
+          <MDBox textAlign="center" mb={6}>
+            <motion.div variants={itemVariants}>
+              <MDTypography
+                variant="caption"
+                fontWeight="bold"
+                sx={{
+                  display: "inline-block",
+                  backgroundColor: (theme) => theme.palette.goaltimeOrange.light,
+                  color: (theme) => theme.palette.goaltimeOrange.dark,
+                  px: 1.5,
+                  py: 0.5,
+                  borderRadius: "16px",
+                }}
+              >
+                Soluciones para Jugadores
+              </MDTypography>
+            </motion.div>
+            <motion.div variants={itemVariants}>
+              <MDTypography variant="h3" mt={2} mb={1}>
+                Juega, Reserva y Disfruta
+              </MDTypography>
+            </motion.div>
+            <motion.div variants={itemVariants}>
+              <MDTypography variant="body1" color="text">
+                Encuentra, reserva y juega en las mejores canchas deportivas cerca de ti. ¡Tu
+                partido ideal comienza aquí!
+              </MDTypography>
+            </motion.div>
+          </MDBox>
+
+          {/* Grid de Características */}
+          <Grid container spacing={4}>
+            {features.map((feature, index) => (
+              <Grid item xs={12} md={6} lg={4} key={index}>
+                <motion.div
+                  variants={itemVariants}
+                  whileHover={{ y: -8, scale: 1.03 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                >
+                  <Card sx={{ height: "100%", boxShadow: "none", border: "1px solid #E0E1E3" }}>
+                    <MDBox p={3} textAlign="center">
+                      <FeatureIcon color={feature.color}>{feature.icon}</FeatureIcon>
+                      <MDTypography variant="h5" fontWeight="medium" mb={1}>
+                        {feature.title}
+                      </MDTypography>
+                      <MDTypography variant="body2" color="text">
+                        {feature.description}
+                      </MDTypography>
+                    </MDBox>
+                  </Card>
+                </motion.div>
+              </Grid>
+            ))}
+          </Grid>
+
+          {/* Botón "Explora Canchas" */}
+          <motion.div variants={itemVariants}>
+            <MDBox display="flex" justifyContent="center" mt={6}>
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                transition={{ type: "spring", stiffness: 400, damping: 10 }}
+              >
+                {/* --- CORRECCIÓN DE COLOR --- */}
+                <MDButton
+                  component={require("react-router-dom").Link}
+                  to={currentUser ? "/canchas" : "/authentication/sign-in"}
+                  variant="gradient"
+                  startIcon={<Icon>explore</Icon>}
+                  sx={{
+                    backgroundColor: (theme) => theme.palette.goaltime.main,
+                    color: (theme) => theme.palette.goaltime.contrastText,
+                    "&:hover": {
+                      backgroundColor: (theme) => theme.palette.goaltime.dark,
+                    },
+                  }}
+                >
+                  Explora Canchas
+                </MDButton>
+              </motion.div>
+            </MDBox>
+          </motion.div>
+        </motion.div>
+      </Container>
+    </MDBox>
+  );
+}
+
+export default PlayersSection;

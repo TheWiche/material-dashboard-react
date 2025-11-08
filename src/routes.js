@@ -14,6 +14,7 @@ import Blog from "layouts/blog";
 import License from "layouts/license";
 import PrivacyPolicy from "layouts/privacy-policy";
 import TermsOfService from "layouts/terms-of-service";
+import Homepage from "layouts/homepage";
 
 // Aquí irá la importación de BecomeAssociate en el futuro
 
@@ -135,6 +136,11 @@ const routes = [
   },
 
   // --- Rutas Públicas (Visibles para TODOS, pero no en el menú) ---
+  {
+    key: "homepage",
+    route: "/",
+    component: <Homepage />,
+  },
   {
     key: "privacy-policy",
     route: "/politica-de-privacidad",

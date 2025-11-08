@@ -10,7 +10,7 @@ import Sidenav from "examples/Sidenav";
 import Configurator from "examples/Configurator";
 import theme from "assets/theme";
 import themeDark from "assets/theme-dark";
-import routes from "routes";
+import routes from "routes"; // Asegúrate que 'routes.js' incluya tu ruta para "homepage" en "/"
 import { useMaterialUIController, setMiniSidenav, setOpenConfigurator } from "context";
 import { useAuth } from "context/AuthContext";
 import brandWhite from "assets/images/Logo.png";
@@ -30,9 +30,8 @@ export default function App() {
   } = controller;
   const [onMouseEnter, setOnMouseEnter] = useState(false);
   const { pathname } = useLocation();
-  const { userProfile } = useAuth();
+  const { userProfile } = useAuth(); // AuthContext maneja el estado de carga inicial
 
-  // ... (funciones handle... no cambian)
   const handleOnMouseEnter = () => {
     if (miniSidenav && !onMouseEnter) {
       setMiniSidenav(dispatch, false);
@@ -58,9 +57,10 @@ export default function App() {
     document.scrollingElement.scrollTop = 0;
   }, [pathname]);
 
+  // Tu lógica de filteredRoutes está PERFECTA. No la cambiamos.
   const filteredRoutes = useMemo(() => {
-    // Estas son las rutas que SIEMPRE deben existir, sea cual sea el estado de autenticación.
     const publicKeys = [
+      "homepage", // Asegúrate de que tu ruta "/" tenga key: "homepage" en routes.js
       "about-us",
       "blog",
       "license",
@@ -70,31 +70,26 @@ export default function App() {
     ];
 
     if (!userProfile) {
-      // Si no hay usuario, solo permite las rutas públicas y las de autenticación.
       return routes.filter(
         (route) =>
           publicKeys.includes(route.key) || route.key === "sign-in" || route.key === "sign-up"
       );
     }
 
-    // Si hay un usuario logueado, empieza con todas las rutas...
     let userRoutes = routes.filter(
       (route) => route.key !== "sign-in" && route.key !== "sign-up" && route.key !== "rtl"
     );
 
     if (userProfile.role === "cliente") {
-      // El cliente no ve el dashboard ni la gestión de usuarios
       userRoutes = userRoutes.filter(
         (route) => route.key !== "dashboard" && route.key !== "admin-users"
       );
     } else if (userProfile.role === "asociado") {
-      // Un asociado (por ahora) tampoco ve la gestión de usuarios
       userRoutes = userRoutes.filter((route) => route.key !== "admin-users");
     }
 
-    // El admin ve todo lo que no se filtró antes.
     return userRoutes;
-  }, [userProfile]);
+  }, [userProfile]); // El 'userProfile' es provisto por AuthContext después de la carga inicial
 
   const getRoutes = (allRoutes) =>
     allRoutes.map((route) => {
@@ -131,16 +126,19 @@ export default function App() {
     </MDBox>
   );
 
+  // Esta lógica también está PERFECTA.
+  const showSidenav =
+    layout === "dashboard" && !pathname.includes("/authentication") && pathname !== "/";
+
   return (
     <ThemeProvider theme={darkMode ? themeDark : theme}>
       <CssBaseline />
-      {layout === "dashboard" && !pathname.includes("/authentication") && (
+      {showSidenav && (
         <>
           <Sidenav
             color={sidenavColor}
             brand={brandDark}
             brandName="GoalTime"
-            // 👇 Le pasamos al Sidenav solo las rutas que tienen 'type: "collapse"' para que no muestre las públicas
             routes={filteredRoutes.filter((route) => route.type === "collapse")}
             onMouseEnter={handleOnMouseEnter}
             onMouseLeave={handleOnMouseLeave}
@@ -152,10 +150,15 @@ export default function App() {
       {layout === "vr" && <Configurator />}
       <Routes>
         {getRoutes(filteredRoutes)}
-        <Route
-          path="*"
-          element={<Navigate to={userProfile ? "/canchas" : "/authentication/sign-in"} />}
-        />
+
+        {/* 👇 LA CORRECCIÓN ESTÁ AQUÍ 👇 */}
+        {/*
+          En lugar de una redirección condicional, hacemos que cualquier ruta
+          no encontrada simplemente redirija a la página de inicio.
+          La lógica de 'filteredRoutes' y 'GuestRoute'/'ProtectedRoute'
+          ya se encarga de decidir si el usuario debe estar en el login o en canchas.
+        */}
+        <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </ThemeProvider>
   );

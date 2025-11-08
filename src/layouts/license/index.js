@@ -2,9 +2,8 @@
 
 import Grid from "@mui/material/Grid";
 import Card from "@mui/material/Card";
-import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
-import DashboardNavbar from "examples/Navbars/DashboardNavbar";
-import Footer from "examples/Footer";
+import Container from "@mui/material/Container";
+import PublicLayout from "layouts/PublicLayout";
 import MDBox from "components/MDBox";
 import MDTypography from "components/MDTypography";
 
@@ -18,26 +17,43 @@ EL SOFTWARE SE PROPORCIONA "TAL CUAL", SIN GARANTÍA DE NINGÚN TIPO, EXPRESA O 
 
 function License() {
   return (
-    <DashboardLayout>
-      <DashboardNavbar />
-      <MDBox pt={6} pb={3}>
+    <PublicLayout>
+      {/* --- 1. Hero Oscuro para el Título --- */}
+      <MDBox
+        bgColor="dark"
+        variant="gradient"
+        minHeight="25vh"
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+      >
+        <MDTypography variant="h2" color="white" fontWeight="bold">
+          Licencia de Uso
+        </MDTypography>
+      </MDBox>
+
+      {/* --- 2. Contenido con Superposición --- */}
+      <Container sx={{ mt: -8, py: 8 }}>
         <Grid container justifyContent="center">
           <Grid item xs={12} lg={10}>
-            <Card>
-              <MDBox p={3}>
+            <Card sx={{ boxShadow: "lg" }}>
+              <MDBox p={{ xs: 2, sm: 3, md: 4 }}>
                 <MDTypography variant="h4" gutterBottom>
                   Licencia de Uso (MIT)
                 </MDTypography>
-                <MDTypography variant="body2" color="text" sx={{ whiteSpace: "pre-wrap" }}>
+                <MDTypography
+                  variant="body2"
+                  color="text"
+                  sx={{ whiteSpace: "pre-wrap", lineHeight: 1.8 }}
+                >
                   {mitLicenseText}
                 </MDTypography>
               </MDBox>
             </Card>
           </Grid>
         </Grid>
-      </MDBox>
-      <Footer />
-    </DashboardLayout>
+      </Container>
+    </PublicLayout>
   );
 }
 

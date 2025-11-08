@@ -57,18 +57,13 @@ function Footer({ company, links }) {
         fontSize={size.sm}
         px={1.5}
       >
-        &copy; {new Date().getFullYear()}, hecho con
-        <MDBox fontSize={size.md} color="text" mb={-0.5} mx={0.25}>
-          <Icon color="inherit" fontSize="inherit">
-            favorite
-          </Icon>
-        </MDBox>
-        por
-        <Link href={href} target="_blank">
+        &copy; {new Date().getFullYear()}
+        <Link href={home} target="_blank">
           <MDTypography variant="button" fontWeight="medium">
             &nbsp;{name}&nbsp;
           </MDTypography>
         </Link>
+        . Todos los derechos reservados.
       </MDBox>
       <MDBox
         component="ul"
@@ -96,10 +91,9 @@ function Footer({ company, links }) {
 Footer.defaultProps = {
   company: { href: "#", name: "GoalTime" },
   links: [
-    { href: "/become-associate", name: "Conviértete en Asociado", isInternal: true },
-    { href: "/sobre-nosotros", name: "Sobre Nosotros", isInternal: true },
+    { href: "/about-us", name: "Sobre Nosotros", isInternal: true },
     { href: "/blog", name: "Blog", isInternal: true },
-    { href: "/licencia", name: "Licencia", isInternal: true },
+    { href: "/license", name: "Licencia", isInternal: true },
   ],
 };
 

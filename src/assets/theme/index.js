@@ -13,6 +13,8 @@ Coded by www.creative-tim.com
 * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 */
 
+// src/assets/theme/index.js
+
 // @mui material components
 import { createTheme } from "@mui/material/styles";
 
@@ -83,9 +85,51 @@ import dialogContent from "assets/theme/components/dialog/dialogContent";
 import dialogContentText from "assets/theme/components/dialog/dialogContentText";
 import dialogActions from "assets/theme/components/dialog/dialogActions";
 
+const {
+  primary,
+  secondary,
+  info,
+  success,
+  warning,
+  error,
+  light,
+  dark,
+  white,
+  text,
+  background,
+  grey,
+} = colors;
+
 export default createTheme({
   breakpoints: { ...breakpoints },
-  palette: { ...colors },
+  palette: {
+    ...colors,
+    primary,
+    secondary,
+    info,
+    success,
+    warning,
+    error,
+    light,
+    dark,
+    white,
+    text,
+    background,
+    grey,
+    goaltime: {
+      main: "#19D470", // El verde principal de tu diseño
+      light: "#69f0ae", // Un tono más claro para 'hover' o 'active'
+      dark: "#00a142", // Un tono más oscuro
+      contrastText: "#ffffff", // Color del texto sobre este color
+    },
+
+    goaltimeOrange: {
+      main: "#FF6B2C", // El naranja/rojo de tu diseño
+      light: "#ff9c5a",
+      dark: "#c53700",
+      contrastText: "#ffffff",
+    },
+  },
   typography: { ...typography },
   boxShadows: { ...boxShadows },
   borders: { ...borders },

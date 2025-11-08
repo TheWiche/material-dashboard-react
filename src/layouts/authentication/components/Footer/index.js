@@ -38,18 +38,13 @@ function Footer({ light }) {
             color={light ? "white" : "text"}
             fontSize={size.sm}
           >
-            &copy; {new Date().getFullYear()}, hecho con
-            <MDBox fontSize={size.md} color={light ? "white" : "dark"} mb={-0.5} mx={0.25}>
-              <Icon color="inherit" fontSize="inherit">
-                favorite
-              </Icon>
-            </MDBox>
-            por
-            <Link href="#" target="_blank">
-              <MDTypography variant="button" fontWeight="medium" color={light ? "white" : "dark"}>
+            &copy; {new Date().getFullYear()}
+            <Link href="home" target="_blank">
+              <MDTypography variant="button" fontWeight="medium">
                 &nbsp;GoalTime&nbsp;
               </MDTypography>
             </Link>
+            . Todos los derechos reservados.
           </MDBox>
 
           {/* 👇 SECCIÓN DE ENLACES ACTUALIZADA */}
@@ -69,17 +64,6 @@ function Footer({ light }) {
               },
             })}
           >
-            <MDBox component="li" px={2} lineHeight={1}>
-              <Link component={RouterLink} to="/become-associate">
-                <MDTypography
-                  variant="button"
-                  fontWeight="regular"
-                  color={light ? "white" : "dark"}
-                >
-                  Conviértete en Asociado
-                </MDTypography>
-              </Link>
-            </MDBox>
             <MDBox component="li" px={2} lineHeight={1}>
               <Link component={RouterLink} to="/sobre-nosotros">
                 <MDTypography
