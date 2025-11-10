@@ -37,7 +37,28 @@ function VerifyEmail() {
   const unsubscribeRef = useRef(null);
   const checkIntervalRef = useRef(null);
   const cooldownIntervalRef = useRef(null);
-  const { userProfile, initialAuthLoading } = useAuth();
+  const { userProfile, initialAuthLoading, currentUser } = useAuth();
+
+  // Cargar cooldown desde localStorage al montar
+  useEffect(() => {
+    if (currentUser) {
+      const storedCooldown = localStorage.getItem(`emailCooldown_${currentUser.uid}`);
+      const storedTime = localStorage.getItem(`emailCooldownTime_${currentUser.uid}`);
+
+      if (storedCooldown && storedTime) {
+        const elapsed = Math.floor((Date.now() - parseInt(storedTime)) / 1000);
+        const remaining = Math.max(0, parseInt(storedCooldown) - elapsed);
+
+        if (remaining > 0) {
+          setCooldownSeconds(remaining);
+        } else {
+          // Limpiar si ya expiró
+          localStorage.removeItem(`emailCooldown_${currentUser.uid}`);
+          localStorage.removeItem(`emailCooldownTime_${currentUser.uid}`);
+        }
+      }
+    }
+  }, [currentUser]);
 
   // Función para obtener el oobCode de diferentes lugares (igual que en reset password)
   const getOobCodeFromUrl = useCallback(() => {
@@ -142,6 +163,23 @@ function VerifyEmail() {
         setIsVerified(verified);
         setIsChecking(false);
 
+        // Mostrar mensaje si el email no se envió durante el registro
+        if (userProfile?.emailVerificationError) {
+          const error = userProfile.emailVerificationError;
+          if (error.code === "auth/unauthorized-continue-uri") {
+            setErrorMessage(
+              `El dominio "${window.location.hostname}" no está autorizado en Firebase. Por favor, contacta al administrador o agrega este dominio en Firebase Console > Authentication > Settings > Authorized domains.`
+            );
+            openErrorSB();
+          } else if (error.code === "auth/too-many-requests") {
+            setCooldownSeconds(300); // 5 minutos
+            setErrorMessage(
+              "Has enviado demasiados emails de verificación. Por favor, espera 5 minutos antes de intentar nuevamente."
+            );
+            openErrorSB();
+          }
+        }
+
         if (verified) {
           // Si ya está verificado, redirigir después de un breve delay
           setTimeout(() => {
@@ -217,21 +255,40 @@ function VerifyEmail() {
   // Cooldown de 60 segundos entre reenvíos
   const COOLDOWN_DURATION = 60; // segundos
 
-  // Efecto para manejar el cooldown
+  // Efecto para manejar el cooldown y persistirlo en localStorage
   useEffect(() => {
-    if (cooldownSeconds > 0) {
+    if (cooldownSeconds > 0 && currentUser) {
+      // Guardar en localStorage
+      localStorage.setItem(`emailCooldown_${currentUser.uid}`, cooldownSeconds.toString());
+      localStorage.setItem(`emailCooldownTime_${currentUser.uid}`, Date.now().toString());
+
       cooldownIntervalRef.current = setInterval(() => {
         setCooldownSeconds((prev) => {
-          if (prev <= 1) {
-            return 0;
+          const newValue = prev <= 1 ? 0 : prev - 1;
+
+          // Actualizar localStorage
+          if (currentUser) {
+            if (newValue === 0) {
+              localStorage.removeItem(`emailCooldown_${currentUser.uid}`);
+              localStorage.removeItem(`emailCooldownTime_${currentUser.uid}`);
+            } else {
+              localStorage.setItem(`emailCooldown_${currentUser.uid}`, newValue.toString());
+            }
           }
-          return prev - 1;
+
+          return newValue;
         });
       }, 1000);
     } else {
       if (cooldownIntervalRef.current) {
         clearInterval(cooldownIntervalRef.current);
         cooldownIntervalRef.current = null;
+      }
+
+      // Limpiar localStorage si el cooldown terminó
+      if (cooldownSeconds === 0 && currentUser) {
+        localStorage.removeItem(`emailCooldown_${currentUser.uid}`);
+        localStorage.removeItem(`emailCooldownTime_${currentUser.uid}`);
       }
     }
 
@@ -240,7 +297,7 @@ function VerifyEmail() {
         clearInterval(cooldownIntervalRef.current);
       }
     };
-  }, [cooldownSeconds]);
+  }, [cooldownSeconds, currentUser]);
 
   const handleResendEmail = async () => {
     // Verificar cooldown
@@ -462,25 +519,53 @@ function VerifyEmail() {
 
         {/* Información adicional */}
         {!isVerified && !isChecking && (
-          <MDBox
-            mt={4}
-            p={2}
-            borderRadius={2}
-            sx={{
-              backgroundColor: "info.lighter",
-              border: "1px solid",
-              borderColor: "info.main",
-            }}
-          >
-            <MDTypography variant="caption" color="info.dark" display="block" mb={1}>
-              <strong>¿No recibiste el email?</strong>
-            </MDTypography>
-            <MDTypography variant="caption" color="info.dark">
-              • Revisa tu carpeta de spam o correo no deseado
-              <br />• Asegúrate de que el email sea correcto
-              <br />• Espera unos minutos y haz clic en &quot;Reenviar Email de Verificación&quot;
-            </MDTypography>
-          </MDBox>
+          <>
+            {/* Mensaje de advertencia si el email no se envió durante el registro */}
+            {userProfile?.emailVerificationError && (
+              <MDBox
+                mt={4}
+                mb={2}
+                p={2}
+                borderRadius={2}
+                sx={{
+                  backgroundColor: "warning.lighter",
+                  border: "1px solid",
+                  borderColor: "warning.main",
+                }}
+              >
+                <MDTypography variant="caption" color="warning.dark" display="block" mb={1}>
+                  <strong>⚠️ Email no enviado durante el registro</strong>
+                </MDTypography>
+                <MDTypography variant="caption" color="warning.dark">
+                  {userProfile.emailVerificationError.code === "auth/unauthorized-continue-uri"
+                    ? `El dominio no está autorizado en Firebase. Por favor, contacta al administrador o intenta reenviar el email usando el botón de abajo.`
+                    : userProfile.emailVerificationError.code === "auth/too-many-requests"
+                    ? "Has enviado demasiados emails. Por favor, espera unos minutos antes de intentar reenviar."
+                    : "Hubo un problema al enviar el email de verificación. Por favor, intenta reenviar el email usando el botón de abajo."}
+                </MDTypography>
+              </MDBox>
+            )}
+
+            <MDBox
+              mt={userProfile?.emailVerificationError ? 0 : 4}
+              p={2}
+              borderRadius={2}
+              sx={{
+                backgroundColor: "info.lighter",
+                border: "1px solid",
+                borderColor: "info.main",
+              }}
+            >
+              <MDTypography variant="caption" color="info.dark" display="block" mb={1}>
+                <strong>¿No recibiste el email?</strong>
+              </MDTypography>
+              <MDTypography variant="caption" color="info.dark">
+                • Revisa tu carpeta de spam o correo no deseado
+                <br />• Asegúrate de que el email sea correcto
+                <br />• Espera unos minutos y haz clic en &quot;Reenviar Email de Verificación&quot;
+              </MDTypography>
+            </MDBox>
+          </>
         )}
       </MDBox>
 

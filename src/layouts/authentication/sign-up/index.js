@@ -105,7 +105,24 @@ function Cover() {
     setIsLoading(true);
     setRegistrationSuccess(false);
     try {
-      await registerUser(name, email, password);
+      const userProfile = await registerUser(name, email, password);
+
+      // Verificar si hubo error al enviar el email
+      if (userProfile?.emailVerificationError) {
+        const error = userProfile.emailVerificationError;
+        if (error.code === "auth/unauthorized-continue-uri") {
+          setErrorMessage(
+            `El dominio no está autorizado en Firebase. El registro fue exitoso, pero no se pudo enviar el email de verificación. Por favor, contacta al administrador o agrega "${window.location.hostname}" en Firebase Console > Authentication > Settings > Authorized domains. Puedes intentar reenviar el email desde la página de verificación.`
+          );
+          openErrorSB();
+        } else if (error.code === "auth/too-many-requests") {
+          setErrorMessage(
+            "Has enviado demasiados emails de verificación. El registro fue exitoso, pero deberás esperar unos minutos antes de poder solicitar un nuevo email de verificación."
+          );
+          openErrorSB();
+        }
+      }
+
       // Redirigir inmediatamente después del registro exitoso
       // No usar useEffect porque GuestRoute puede interferir
       setIsLoading(false);

@@ -101,6 +101,9 @@ export const registerUser = async (name, email, password) => {
   await setDoc(doc(db, "users", user.uid), userProfile);
 
   // Enviar email de verificación
+  let emailSent = false;
+  let emailError = null;
+
   try {
     let continueUrl;
 
@@ -111,7 +114,7 @@ export const registerUser = async (name, email, password) => {
     } else {
       // Producción: usar el dominio exacto que el usuario está usando (con o sin www)
       // IMPORTANTE: Tanto goaltime.site como www.goaltime.site deben estar autorizados en Firebase Console
-      const protocol = window.location.protocol === "https:" ? "https" : "https"; // Forzar HTTPS en producción
+      const protocol = "https"; // Forzar HTTPS en producción
       const hostname = window.location.hostname; // Usar el hostname exacto (con o sin www)
       const port = window.location.port ? `:${window.location.port}` : "";
       continueUrl = `${protocol}://${hostname}${port}/authentication/verify-email`;
@@ -128,9 +131,12 @@ export const registerUser = async (name, email, password) => {
       handleCodeInApp: false,
     });
 
+    emailSent = true;
     console.log("Email de verificación enviado exitosamente");
   } catch (error) {
     console.error("Error enviando email de verificación:", error);
+    emailError = error;
+
     // Si es un error de dominio no autorizado, proporcionar más información
     if (error.code === "auth/unauthorized-continue-uri") {
       console.error("⚠️ SOLUCIÓN REQUERIDA:");
@@ -139,9 +145,17 @@ export const registerUser = async (name, email, password) => {
       console.error("      - goaltime.site");
       console.error("      - www.goaltime.site");
       console.error("   3. La URL debe usar HTTPS en producción");
-      console.error("   URL que intentó usar:", continueUrl);
     }
-    // No lanzamos el error para que el registro continúe
+    // No lanzamos el error para que el registro continúe, pero guardamos el error
+  }
+
+  // Agregar información sobre el envío del email al perfil
+  userProfile.emailVerificationSent = emailSent;
+  if (emailError) {
+    userProfile.emailVerificationError = {
+      code: emailError.code,
+      message: emailError.message,
+    };
   }
 
   return userProfile; // Devuelve el perfil
