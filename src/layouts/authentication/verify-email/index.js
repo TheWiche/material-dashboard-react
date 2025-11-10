@@ -32,8 +32,11 @@ function VerifyEmail() {
   const [successMessage, setSuccessMessage] = useState("");
   const [userEmail, setUserEmail] = useState("");
   const [checkCount, setCheckCount] = useState(0);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  const [lastResendTime, setLastResendTime] = useState(null);
   const unsubscribeRef = useRef(null);
   const checkIntervalRef = useRef(null);
+  const cooldownIntervalRef = useRef(null);
   const { userProfile, initialAuthLoading } = useAuth();
 
   // Función para obtener el oobCode de diferentes lugares (igual que en reset password)
@@ -205,19 +208,82 @@ function VerifyEmail() {
       if (checkIntervalRef.current) {
         clearInterval(checkIntervalRef.current);
       }
+      if (cooldownIntervalRef.current) {
+        clearInterval(cooldownIntervalRef.current);
+      }
     };
   }, [navigate, initialAuthLoading, isVerified]);
 
+  // Cooldown de 60 segundos entre reenvíos
+  const COOLDOWN_DURATION = 60; // segundos
+
+  // Efecto para manejar el cooldown
+  useEffect(() => {
+    if (cooldownSeconds > 0) {
+      cooldownIntervalRef.current = setInterval(() => {
+        setCooldownSeconds((prev) => {
+          if (prev <= 1) {
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      if (cooldownIntervalRef.current) {
+        clearInterval(cooldownIntervalRef.current);
+        cooldownIntervalRef.current = null;
+      }
+    }
+
+    return () => {
+      if (cooldownIntervalRef.current) {
+        clearInterval(cooldownIntervalRef.current);
+      }
+    };
+  }, [cooldownSeconds]);
+
   const handleResendEmail = async () => {
+    // Verificar cooldown
+    if (cooldownSeconds > 0) {
+      setErrorMessage(
+        `Por favor, espera ${cooldownSeconds} segundo${
+          cooldownSeconds !== 1 ? "s" : ""
+        } antes de solicitar otro email.`
+      );
+      openErrorSB();
+      return;
+    }
+
     setIsResending(true);
     try {
       await resendVerificationEmail();
       setSuccessMessage("Email de verificación reenviado. Revisa tu bandeja de entrada.");
       openSuccessSB();
+      // Iniciar cooldown
+      setCooldownSeconds(COOLDOWN_DURATION);
+      setLastResendTime(Date.now());
     } catch (error) {
-      setErrorMessage(
-        error.message || "Error al reenviar el email. Por favor, inténtalo más tarde."
-      );
+      let message = error.message || "Error al reenviar el email. Por favor, inténtalo más tarde.";
+
+      // Manejo específico para too-many-requests
+      if (error.code === "auth/too-many-requests") {
+        // Cooldown más largo si Firebase bloquea
+        setCooldownSeconds(300); // 5 minutos
+        message =
+          error.message ||
+          "Has enviado demasiados emails. Por favor, espera 5 minutos antes de intentar nuevamente.";
+      } else if (error.code === "auth/unauthorized-continue-uri") {
+        // Error de dominio no autorizado - mensaje más detallado
+        message =
+          error.message ||
+          `El dominio no está autorizado en Firebase. Por favor, agrega "${window.location.hostname}" en Firebase Console > Authentication > Settings > Authorized domains.`;
+        // No aplicar cooldown para este error, es un problema de configuración
+      } else {
+        // Cooldown normal para otros errores
+        setCooldownSeconds(COOLDOWN_DURATION);
+      }
+
+      setErrorMessage(message);
       openErrorSB();
     } finally {
       setIsResending(false);
@@ -350,7 +416,7 @@ function VerifyEmail() {
               variant="outlined"
               fullWidth
               onClick={handleResendEmail}
-              disabled={isResending}
+              disabled={isResending || cooldownSeconds > 0}
               sx={{
                 mb: 2,
                 borderColor: (theme) => theme.palette.goaltime.main,
@@ -361,10 +427,18 @@ function VerifyEmail() {
                   borderColor: (theme) => theme.palette.goaltime.dark,
                   backgroundColor: (theme) => `${theme.palette.goaltime.main}10`,
                 },
+                "&:disabled": {
+                  borderColor: "grey.300",
+                  color: "grey.500",
+                },
               }}
               startIcon={isResending ? <CircularProgress size={20} /> : <Refresh />}
             >
-              {isResending ? "Reenviando..." : "Reenviar Email de Verificación"}
+              {isResending
+                ? "Reenviando..."
+                : cooldownSeconds > 0
+                ? `Espera ${cooldownSeconds}s antes de reenviar`
+                : "Reenviar Email de Verificación"}
             </MDButton>
 
             {/* Botón para ir a iniciar sesión */}

@@ -104,17 +104,17 @@ export const registerUser = async (name, email, password) => {
   try {
     let continueUrl;
 
-    // Determinar la URL correcta según el entorno (igual que en sendPasswordReset)
+    // Determinar la URL correcta según el entorno
     if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
       // Desarrollo: usar HTTP
       continueUrl = `${window.location.origin}/authentication/verify-email`;
     } else {
-      // Producción: forzar HTTPS (Firebase requiere HTTPS para dominios de producción)
-      // Usar el hostname tal cual (con o sin www) para que funcione con ambos
-      // IMPORTANTE: Ambos dominios deben estar autorizados en Firebase Console
-      const hostname = window.location.hostname;
+      // Producción: usar el dominio exacto que el usuario está usando (con o sin www)
+      // IMPORTANTE: Tanto goaltime.site como www.goaltime.site deben estar autorizados en Firebase Console
+      const protocol = window.location.protocol === "https:" ? "https" : "https"; // Forzar HTTPS en producción
+      const hostname = window.location.hostname; // Usar el hostname exacto (con o sin www)
       const port = window.location.port ? `:${window.location.port}` : "";
-      continueUrl = `https://www.${hostname}${port}/authentication/verify-email`;
+      continueUrl = `${protocol}://${hostname}${port}/authentication/verify-email`;
     }
 
     console.log("Enviando email de verificación:");
@@ -131,6 +131,16 @@ export const registerUser = async (name, email, password) => {
     console.log("Email de verificación enviado exitosamente");
   } catch (error) {
     console.error("Error enviando email de verificación:", error);
+    // Si es un error de dominio no autorizado, proporcionar más información
+    if (error.code === "auth/unauthorized-continue-uri") {
+      console.error("⚠️ SOLUCIÓN REQUERIDA:");
+      console.error("   1. Ve a Firebase Console > Authentication > Settings > Authorized domains");
+      console.error("   2. Asegúrate de que estos dominios estén autorizados:");
+      console.error("      - goaltime.site");
+      console.error("      - www.goaltime.site");
+      console.error("   3. La URL debe usar HTTPS en producción");
+      console.error("   URL que intentó usar:", continueUrl);
+    }
     // No lanzamos el error para que el registro continúe
   }
 
@@ -1414,27 +1424,50 @@ export const resendVerificationEmail = async () => {
 
   let continueUrl;
 
-  // Determinar la URL correcta según el entorno (igual que en sendPasswordReset)
+  // Determinar la URL correcta según el entorno
   if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
     // Desarrollo: usar HTTP
     continueUrl = `${window.location.origin}/authentication/verify-email`;
   } else {
-    // Producción: forzar HTTPS (Firebase requiere HTTPS para dominios de producción)
-    // Usar el hostname tal cual (con o sin www) para que funcione con ambos
-    // IMPORTANTE: Ambos dominios deben estar autorizados en Firebase Console
-    const hostname = window.location.hostname;
+    // Producción: usar el dominio exacto que el usuario está usando (con o sin www)
+    // IMPORTANTE: Tanto goaltime.site como www.goaltime.site deben estar autorizados en Firebase Console
+    const protocol = window.location.protocol === "https:" ? "https" : "https"; // Forzar HTTPS en producción
+    const hostname = window.location.hostname; // Usar el hostname exacto (con o sin www)
     const port = window.location.port ? `:${window.location.port}` : "";
-    continueUrl = `https://www.${hostname}${port}/authentication/verify-email`;
+    continueUrl = `${protocol}://${hostname}${port}/authentication/verify-email`;
   }
 
   console.log("Reenviando email de verificación:");
   console.log("- Email:", user.email);
   console.log("- Continue URL:", continueUrl);
 
-  await sendEmailVerification(user, {
-    url: continueUrl,
-    handleCodeInApp: false,
-  });
+  try {
+    await sendEmailVerification(user, {
+      url: continueUrl,
+      handleCodeInApp: false,
+    });
+  } catch (error) {
+    // Manejar error específico de demasiadas solicitudes
+    if (error.code === "auth/too-many-requests") {
+      const friendlyError = new Error(
+        "Has enviado demasiados emails de verificación. Por favor, espera unos minutos antes de intentar nuevamente. Firebase limita el número de emails que se pueden enviar en un período corto de tiempo para proteger tu cuenta."
+      );
+      friendlyError.code = "auth/too-many-requests";
+      throw friendlyError;
+    }
+    // Manejar error de dominio no autorizado
+    if (error.code === "auth/unauthorized-continue-uri") {
+      const currentDomain = window.location.hostname;
+      const friendlyError = new Error(
+        `El dominio "${currentDomain}" no está autorizado en Firebase. Por favor, agrega este dominio en Firebase Console > Authentication > Settings > Authorized domains. También asegúrate de agregar tanto "goaltime.site" como "www.goaltime.site" si usas ambos.`
+      );
+      friendlyError.code = "auth/unauthorized-continue-uri";
+      friendlyError.domain = currentDomain;
+      throw friendlyError;
+    }
+    // Re-lanzar otros errores
+    throw error;
+  }
 };
 
 /**
