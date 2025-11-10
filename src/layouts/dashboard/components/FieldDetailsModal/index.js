@@ -1,6 +1,7 @@
 // src/layouts/dashboard/components/FieldDetailsModal/index.js
 
 import PropTypes from "prop-types";
+import { useNavigate } from "react-router-dom";
 import { Dialog, DialogTitle, DialogContent, Grid, Card, Divider, Chip } from "@mui/material";
 import MDButton from "components/MDButton";
 import MDBox from "components/MDBox";
@@ -9,6 +10,7 @@ import Icon from "@mui/material/Icon";
 import MDBadge from "components/MDBadge";
 
 function FieldDetailsModal({ open, onClose, field }) {
+  const navigate = useNavigate();
   if (!field) return null;
 
   const getStatusColor = (status) => {
@@ -273,7 +275,12 @@ function FieldDetailsModal({ open, onClose, field }) {
           <Icon sx={{ mr: 1 }}>close</Icon>
           Cerrar
         </MDButton>
-        <MDButton variant="gradient" color="info" href={`/canchas?edit=${field.id}`} sx={{ ml: 1 }}>
+        <MDButton
+          variant="gradient"
+          color="info"
+          onClick={() => navigate(`/canchas?edit=${field.id}`)}
+          sx={{ ml: 1 }}
+        >
           <Icon sx={{ mr: 1 }}>edit</Icon>
           Gestionar Cancha
         </MDButton>

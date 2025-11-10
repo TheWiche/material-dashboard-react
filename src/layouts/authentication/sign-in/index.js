@@ -29,6 +29,8 @@ const getFriendlyErrorMessage = (errorCode) => {
   switch (errorCode) {
     case "auth/invalid-credential":
       return "Credenciales incorrectas. Verifica tu correo y contraseña.";
+    case "auth/email-not-verified":
+      return "Por favor, verifica tu email antes de iniciar sesión.";
     default:
       return "Ocurrió un error. Por favor, inténtalo más tarde.";
   }
@@ -104,6 +106,11 @@ function Basic() {
         navigate("/dashboard");
       }
     } catch (error) {
+      // Si el email no está verificado, redirigir a la página de verificación
+      if (error.code === "auth/email-not-verified") {
+        navigate("/authentication/verify-email");
+        return;
+      }
       // Incrementar contador de intentos fallidos solo para errores de credenciales
       if (
         error.code === "auth/invalid-credential" ||

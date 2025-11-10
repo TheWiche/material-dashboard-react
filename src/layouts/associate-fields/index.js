@@ -72,7 +72,7 @@ function AssociateFields() {
   };
 
   // Hook de datos, pasando los manejadores de acción
-  const { columns, rows, loading } = useFieldsTableData(
+  const { columns, rows, loading, error } = useFieldsTableData(
     searchTerm,
     statusFilter,
     handleEditField,
@@ -182,6 +182,24 @@ function AssociateFields() {
                 {loading ? (
                   <MDBox display="flex" justifyContent="center" p={3}>
                     <CircularProgress color="info" />
+                  </MDBox>
+                ) : error ? (
+                  <MDBox p={3} textAlign="center">
+                    <MDTypography variant="h6" color="error" mb={1}>
+                      Error al cargar canchas
+                    </MDTypography>
+                    <MDTypography variant="body2" color="text">
+                      {error}
+                    </MDTypography>
+                    <MDButton
+                      variant="gradient"
+                      color="info"
+                      size="small"
+                      onClick={() => window.location.reload()}
+                      sx={{ mt: 2 }}
+                    >
+                      Recargar página
+                    </MDButton>
                   </MDBox>
                 ) : (
                   <DataTable

@@ -16,6 +16,14 @@ function HomepageLayout({ children }) {
     setLayout(dispatch, "page");
   }, [pathname, dispatch]);
 
+  // Agregar smooth scroll behavior
+  useEffect(() => {
+    document.documentElement.style.scrollBehavior = "smooth";
+    return () => {
+      document.documentElement.style.scrollBehavior = "auto";
+    };
+  }, []);
+
   // El header debe ser 'light' (fondo blanco) en todas las páginas
   // EXCEPTO en la homepage (/) que tiene la imagen hero.
   const isHeaderLight = pathname !== "/";
@@ -24,7 +32,13 @@ function HomepageLayout({ children }) {
     <MDBox
       width="100%"
       minHeight="100vh"
-      // El fondo lo controla cada sección (Hero, PlayersSection, etc.)
+      sx={{
+        scrollBehavior: "smooth",
+        // Mejorar el rendimiento del scroll
+        willChange: "scroll-position",
+        // Suavizar el scroll en iOS
+        WebkitOverflowScrolling: "touch",
+      }}
     >
       <HomepageHeader light={isHeaderLight} />
       {children}

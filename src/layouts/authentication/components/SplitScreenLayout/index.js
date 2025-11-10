@@ -9,7 +9,13 @@ import { Box } from "@mui/material";
 import MDBox from "components/MDBox";
 import PageLayout from "examples/LayoutContainers/PageLayout";
 
-function SplitScreenLayout({ leftContent, rightContent, leftWidth = "40%", rightWidth = "60%" }) {
+function SplitScreenLayout({
+  leftContent,
+  rightContent,
+  leftWidth = "40%",
+  rightWidth = "60%",
+  showLeftOnMobile = false,
+}) {
   return (
     <PageLayout>
       <MDBox
@@ -18,13 +24,14 @@ function SplitScreenLayout({ leftContent, rightContent, leftWidth = "40%", right
         display="flex"
         sx={{
           overflow: "hidden",
+          flexDirection: { xs: showLeftOnMobile ? "column-reverse" : "column", md: "row" },
         }}
       >
         {/* Left Panel */}
         <MDBox
-          width={leftWidth}
+          width={{ xs: "100%", md: leftWidth }}
           minHeight="100vh"
-          display={{ xs: "none", md: "flex" }}
+          display={{ xs: showLeftOnMobile ? "flex" : "none", md: "flex" }}
           sx={{
             position: "relative",
             overflow: "hidden",
@@ -57,6 +64,7 @@ SplitScreenLayout.propTypes = {
   rightContent: PropTypes.node.isRequired,
   leftWidth: PropTypes.string,
   rightWidth: PropTypes.string,
+  showLeftOnMobile: PropTypes.bool,
 };
 
 export default SplitScreenLayout;

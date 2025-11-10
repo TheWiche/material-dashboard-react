@@ -16,6 +16,7 @@ import Icon from "@mui/material/Icon";
 export default function useFieldsTableData(searchTerm, statusFilter, onEditField, onToggleDisable) {
   const [fields, setFields] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const { userProfile } = useAuth();
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
@@ -25,59 +26,129 @@ export default function useFieldsTableData(searchTerm, statusFilter, onEditField
       return;
     }
 
-    setLoading(true);
-    let q;
-
-    // Filtrar solo las canchas del asociado actual
-    if (statusFilter !== "all") {
-      // Cuando hay filtro de status, no usamos orderBy para evitar necesidad de índice compuesto
-      // Ordenaremos en memoria después
-      q = query(
-        collection(db, "canchas"),
-        where("ownerId", "==", userProfile.uid),
-        where("status", "==", statusFilter)
-      );
-    } else {
-      q = query(
-        collection(db, "canchas"),
-        where("ownerId", "==", userProfile.uid),
-        orderBy("createdAt", "desc")
-      );
+    // Validar que statusFilter sea válido
+    if (
+      !statusFilter ||
+      (statusFilter !== "all" &&
+        !["pending", "approved", "rejected", "disabled"].includes(statusFilter))
+    ) {
+      console.warn("Filtro de estado inválido:", statusFilter);
+      setFields([]);
+      setLoading(false);
+      return;
     }
 
-    const unsubscribe = onSnapshot(
-      q,
-      (querySnapshot) => {
-        let fieldsData = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    setLoading(true);
+    setError(null);
 
-        // Ordenar por fecha de creación si no hay orderBy en la query
-        if (statusFilter !== "all") {
-          fieldsData.sort((a, b) => {
-            const aTime = a.createdAt?.seconds || 0;
-            const bTime = b.createdAt?.seconds || 0;
-            return bTime - aTime; // Descendente
-          });
-        }
+    let q;
+    let unsubscribe;
 
-        if (debouncedSearchTerm) {
-          const lowercasedFilter = debouncedSearchTerm.toLowerCase();
-          fieldsData = fieldsData.filter(
-            (field) =>
-              (field.name && field.name.toLowerCase().includes(lowercasedFilter)) ||
-              (field.address && field.address.toLowerCase().includes(lowercasedFilter))
+    try {
+      // Filtrar solo las canchas del asociado actual
+      if (statusFilter !== "all") {
+        // Cuando hay filtro de status, no usamos orderBy para evitar necesidad de índice compuesto
+        // Ordenaremos en memoria después
+        q = query(
+          collection(db, "canchas"),
+          where("ownerId", "==", userProfile.uid),
+          where("status", "==", statusFilter)
+        );
+      } else {
+        // Solo para "all" intentamos usar orderBy
+        try {
+          q = query(
+            collection(db, "canchas"),
+            where("ownerId", "==", userProfile.uid),
+            orderBy("createdAt", "desc")
           );
+        } catch (orderByError) {
+          // Si falla orderBy, usar query simple sin orderBy
+          console.warn("Error con orderBy, usando query simple:", orderByError);
+          q = query(collection(db, "canchas"), where("ownerId", "==", userProfile.uid));
         }
-
-        setFields(fieldsData);
-        setLoading(false);
-      },
-      (error) => {
-        console.error("Error al obtener canchas:", error);
-        setLoading(false);
       }
-    );
 
-    return () => unsubscribe();
+      unsubscribe = onSnapshot(
+        q,
+        (querySnapshot) => {
+          try {
+            let fieldsData = querySnapshot.docs.map((doc) => {
+              const data = doc.data();
+              return {
+                id: doc.id,
+                name: data.name || "",
+                address: data.address || "",
+                status: data.status || "pending",
+                pricePerHour: data.pricePerHour || 0,
+                createdAt: data.createdAt || null,
+                ...data,
+              };
+            });
+
+            // Ordenar por fecha de creación si no hay orderBy en la query
+            if (statusFilter !== "all") {
+              fieldsData.sort((a, b) => {
+                const aTime = a.createdAt?.seconds || 0;
+                const bTime = b.createdAt?.seconds || 0;
+                return bTime - aTime; // Descendente
+              });
+            }
+
+            if (debouncedSearchTerm) {
+              const lowercasedFilter = debouncedSearchTerm.toLowerCase();
+              fieldsData = fieldsData.filter((field) => {
+                try {
+                  const nameMatch =
+                    field.name && typeof field.name === "string"
+                      ? field.name.toLowerCase().includes(lowercasedFilter)
+                      : false;
+                  const addressMatch =
+                    field.address && typeof field.address === "string"
+                      ? field.address.toLowerCase().includes(lowercasedFilter)
+                      : false;
+                  return nameMatch || addressMatch;
+                } catch (filterError) {
+                  console.warn("Error al filtrar cancha:", filterError, field);
+                  return false;
+                }
+              });
+            }
+
+            setFields(fieldsData);
+            setLoading(false);
+            setError(null);
+          } catch (processingError) {
+            console.error("Error al procesar datos de canchas:", processingError);
+            setFields([]);
+            setLoading(false);
+            setError("Error al procesar los datos. Por favor, intenta de nuevo.");
+          }
+        },
+        (error) => {
+          console.error("Error al obtener canchas:", error);
+          setFields([]);
+          setLoading(false);
+          setError("Error al cargar las canchas. Por favor, recarga la página.");
+
+          // Si el error es por falta de índice, mostrar mensaje más específico
+          if (error.code === "failed-precondition") {
+            setError("Se requiere un índice en Firestore. Por favor, contacta al administrador.");
+          }
+        }
+      );
+    } catch (queryError) {
+      console.error("Error al construir la query:", queryError);
+      setFields([]);
+      setLoading(false);
+      setError("Error al construir la consulta. Por favor, intenta de nuevo.");
+    }
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [debouncedSearchTerm, statusFilter, userProfile]);
 
   const getStatusColor = (status) => {
@@ -85,7 +156,7 @@ export default function useFieldsTableData(searchTerm, statusFilter, onEditField
     if (status === "pending") return "warning";
     if (status === "rejected") return "error";
     if (status === "disabled") return "secondary";
-    return "dark";
+    return "default";
   };
 
   const getStatusText = (status) => {
@@ -176,5 +247,6 @@ export default function useFieldsTableData(searchTerm, statusFilter, onEditField
     ],
     rows,
     loading,
+    error,
   };
 }

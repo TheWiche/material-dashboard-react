@@ -246,7 +246,7 @@ function Dashboard() {
             <MDTypography variant="body1" color="text" mb={3} textAlign="center">
               Explora nuestras canchas disponibles y haz tu reserva
             </MDTypography>
-            <MDButton variant="gradient" color="info" href="/canchas">
+            <MDButton variant="gradient" color="info" onClick={() => navigate("/canchas")}>
               <Icon sx={{ mr: 1 }}>sports_soccer</Icon>
               Ver Canchas Disponibles
             </MDButton>
@@ -525,7 +525,7 @@ function Dashboard() {
                         color="info"
                         fullWidth
                         size="small"
-                        href="/admin/users"
+                        onClick={() => navigate("/admin/users")}
                       >
                         <Icon sx={{ mr: 1 }}>people</Icon>
                         Gestionar Usuarios
@@ -535,7 +535,7 @@ function Dashboard() {
                         color="warning"
                         fullWidth
                         size="small"
-                        href="/admin/fields"
+                        onClick={() => navigate("/canchas?status=pending")}
                       >
                         <Icon sx={{ mr: 1 }}>check_circle</Icon>
                         Aprobar Canchas
@@ -545,7 +545,7 @@ function Dashboard() {
                         color="dark"
                         fullWidth
                         size="small"
-                        href="/canchas"
+                        onClick={() => navigate("/canchas")}
                       >
                         <Icon sx={{ mr: 1 }}>sports_soccer</Icon>
                         Ver Todas las Canchas
@@ -602,7 +602,11 @@ function Dashboard() {
                         <MDTypography variant="body2" color="text" mb={2}>
                           Aún no has registrado canchas
                         </MDTypography>
-                        <MDButton variant="gradient" color="info" href="/associate/fields">
+                        <MDButton
+                          variant="gradient"
+                          color="info"
+                          onClick={() => navigate("/associate/fields")}
+                        >
                           <Icon sx={{ mr: 1 }}>add</Icon>
                           Registrar Mi Primera Cancha
                         </MDButton>

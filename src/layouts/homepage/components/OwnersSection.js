@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Link } from "react-router-dom";
-import { motion, useInView } from "framer-motion";
+import { motion } from "framer-motion";
 import { Container, Grid, Card, Divider } from "@mui/material";
 import Icon from "@mui/material/Icon";
 import MDBox from "components/MDBox";
@@ -10,6 +10,7 @@ import MDTypography from "components/MDTypography";
 import MDButton from "components/MDButton";
 import PropTypes from "prop-types";
 import ownersImage from "assets/images/bg-sign-up-cover.png";
+import { useScrollAnimation, animationVariants, hoverVariants } from "hooks/useScrollAnimation";
 
 // --- Componente FeatureIcon ---
 function FeatureIcon({ color, children }) {
@@ -20,11 +21,14 @@ function FeatureIcon({ color, children }) {
       alignItems="center"
       width="4rem"
       height="4rem"
-      bgColor={color} // bgColor SÍ acepta colores personalizados
+      bgColor={color}
       color="white"
       variant="gradient"
       borderRadius="lg"
       mb={2}
+      sx={{
+        transition: "transform 0.3s ease",
+      }}
     >
       <Icon fontSize="large">{children}</Icon>
     </MDBox>
@@ -36,20 +40,6 @@ FeatureIcon.propTypes = {
   children: PropTypes.node.isRequired,
 };
 // --- Fin del Componente FeatureIcon ---
-
-// Variantes de animación
-const sectionVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
-};
-const itemVariants = {
-  hidden: { y: 20, opacity: 0 },
-  visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } },
-};
-const listVariants = {
-  hidden: { x: -20, opacity: 0 },
-  visible: { x: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } },
-};
 
 // Datos para las características de dueños
 const ownerFeatures = [
@@ -92,21 +82,33 @@ const ownerFeatures = [
 ];
 
 function OwnersSection() {
-  const ref = React.useRef(null);
-  const isInView = useInView(ref, { once: true, amount: 0.2 });
+  const { ref, isInView } = useScrollAnimation({ once: true, amount: 0.15 });
+
+  // Variantes diferentes para cada tarjeta
+  const getCardVariants = (index) => {
+    const variants = [
+      animationVariants.fadeRight,
+      animationVariants.scaleIn,
+      animationVariants.fadeLeft,
+      animationVariants.rotateIn,
+      animationVariants.slideUp,
+      animationVariants.fadeUp,
+    ];
+    return variants[index % variants.length];
+  };
 
   return (
     <MDBox id="duenos" ref={ref} component="section" py={8} bgColor="white">
       <Container>
         <motion.div
-          variants={sectionVariants}
+          variants={animationVariants.staggerContainer}
           initial="hidden"
           animate={isInView ? "visible" : "hidden"}
         >
           {/* Parte 1: Introducción para Dueños */}
           <Grid container spacing={4} alignItems="center" mb={8}>
             <Grid item xs={12} md={6}>
-              <motion.div variants={itemVariants}>
+              <motion.div variants={animationVariants.fadeLeft}>
                 <MDTypography
                   variant="caption"
                   fontWeight="bold"
@@ -122,19 +124,19 @@ function OwnersSection() {
                   Soluciones para Dueños
                 </MDTypography>
               </motion.div>
-              <motion.div variants={itemVariants}>
+              <motion.div variants={animationVariants.fadeLeft}>
                 <MDTypography variant="h3" mt={2} mb={3}>
                   Impulsa tu Negocio Deportivo
                 </MDTypography>
               </motion.div>
-              <motion.div variants={itemVariants}>
+              <motion.div variants={animationVariants.fadeLeft}>
                 <MDTypography variant="body1" color="text" mb={3}>
                   Simplifica la administración de tus instalaciones deportivas y atrae más clientes
                   con nuestra plataforma todo en uno.
                 </MDTypography>
               </motion.div>
               {/* Lista de beneficios */}
-              <motion.div variants={listVariants}>
+              <motion.div variants={animationVariants.fadeLeft}>
                 <MDBox display="flex" alignItems="center" mb={1}>
                   <MDBox color="goaltime.main" mr={1}>
                     <Icon>check_circle</Icon>
@@ -144,7 +146,7 @@ function OwnersSection() {
                   </MDTypography>
                 </MDBox>
               </motion.div>
-              <motion.div variants={listVariants}>
+              <motion.div variants={animationVariants.fadeLeft}>
                 <MDBox display="flex" alignItems="center" mb={1}>
                   <MDBox color="goaltime.main" mr={1}>
                     <Icon>check_circle</Icon>
@@ -154,7 +156,7 @@ function OwnersSection() {
                   </MDTypography>
                 </MDBox>
               </motion.div>
-              <motion.div variants={listVariants}>
+              <motion.div variants={animationVariants.fadeLeft}>
                 <MDBox display="flex" alignItems="center" mb={3}>
                   <MDBox color="goaltime.main" mr={1}>
                     <Icon>check_circle</Icon>
@@ -164,18 +166,16 @@ function OwnersSection() {
                   </MDTypography>
                 </MDBox>
               </motion.div>
-              <motion.div variants={itemVariants}>
-                {/* --- CORRECCIÓN AQUÍ --- */}
+              <motion.div variants={animationVariants.fadeLeft}>
                 <motion.div
-                  whileHover={{ scale: 1.05 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 10 }}
-                  style={{ display: "inline-block" }} // Importante para que el div no ocupe todo el ancho
+                  whileHover={hoverVariants.scale}
+                  whileTap={{ scale: 0.95 }}
+                  style={{ display: "inline-block" }}
                 >
                   <MDButton
                     variant="gradient"
                     component={Link}
                     to="/become-associate"
-                    // 👇 Se aplica el color personalizado con 'sx'
                     sx={{
                       backgroundColor: (theme) => theme.palette.goaltimeOrange.main,
                       color: (theme) => theme.palette.goaltimeOrange.contrastText,
@@ -190,10 +190,8 @@ function OwnersSection() {
               </motion.div>
             </Grid>
             <Grid item xs={12} md={6}>
-              <motion.div variants={itemVariants} whileHover={{ scale: 1.03 }}>
+              <motion.div variants={animationVariants.fadeRight} whileHover={hoverVariants.scale}>
                 <Card sx={{ overflow: "hidden", position: "relative" }}>
-                  {" "}
-                  {/* Añadido position relative */}
                   <MDBox
                     component="img"
                     src={ownersImage}
@@ -202,7 +200,6 @@ function OwnersSection() {
                     height="25rem"
                     sx={{ objectFit: "cover" }}
                   />
-                  {/* Overlay como en el diseño de Figma */}
                   <MDBox
                     position="absolute"
                     bottom={0}
@@ -231,11 +228,22 @@ function OwnersSection() {
             {ownerFeatures.map((feature, index) => (
               <Grid item xs={12} md={6} lg={4} key={index}>
                 <motion.div
-                  variants={itemVariants}
-                  whileHover={{ y: -8, scale: 1.03 }}
-                  transition={{ type: "spring", stiffness: 300 }}
+                  variants={getCardVariants(index)}
+                  whileHover={hoverVariants.lift}
+                  whileTap={{ scale: 0.98 }}
                 >
-                  <Card sx={{ height: "100%", boxShadow: "none", border: "1px solid #E0E1E3" }}>
+                  <Card
+                    sx={{
+                      height: "100%",
+                      boxShadow: "none",
+                      border: "1px solid #E0E1E3",
+                      transition: "all 0.3s ease",
+                      "&:hover": {
+                        boxShadow: 4,
+                        borderColor: "transparent",
+                      },
+                    }}
+                  >
                     <MDBox p={3} textAlign="left">
                       <FeatureIcon color={feature.color}>{feature.icon}</FeatureIcon>
                       <MDTypography variant="h5" fontWeight="medium" mb={1}>

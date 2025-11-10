@@ -1,28 +1,19 @@
 // src/layouts/homepage/components/TestimonialsSection.js
 
 import React from "react";
-import { motion, useInView } from "framer-motion";
+import { motion } from "framer-motion";
 import { Container, Grid, Card, Divider } from "@mui/material";
 import Icon from "@mui/material/Icon";
 import MDBox from "components/MDBox";
 import MDTypography from "components/MDTypography";
 import MDAvatar from "components/MDAvatar";
 import PropTypes from "prop-types";
+import { useScrollAnimation, animationVariants, hoverVariants } from "hooks/useScrollAnimation";
 
 // Imágenes de avatar de ejemplo (reemplaza con las tuyas)
 import team2 from "assets/images/team-2.jpg";
 import team3 from "assets/images/team-3.jpg";
 import team4 from "assets/images/team-4.jpg";
-
-// Variantes de animación
-const sectionVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
-};
-const itemVariants = {
-  hidden: { y: 20, opacity: 0 },
-  visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } },
-};
 
 // Datos de los testimonios
 const testimonials = [
@@ -63,8 +54,17 @@ function renderStars() {
 }
 
 function TestimonialsSection() {
-  const ref = React.useRef(null);
-  const isInView = useInView(ref, { once: true, amount: 0.2 });
+  const { ref, isInView } = useScrollAnimation({ once: true, amount: 0.15 });
+
+  // Variantes diferentes para cada testimonio
+  const getTestimonialVariants = (index) => {
+    const variants = [
+      animationVariants.fadeUp,
+      animationVariants.scaleIn,
+      animationVariants.fadeLeft,
+    ];
+    return variants[index % variants.length];
+  };
 
   return (
     <MDBox
@@ -78,13 +78,13 @@ function TestimonialsSection() {
     >
       <Container>
         <motion.div
-          variants={sectionVariants}
+          variants={animationVariants.staggerContainer}
           initial="hidden"
           animate={isInView ? "visible" : "hidden"}
         >
           {/* Cabecera de la Sección */}
           <MDBox textAlign="center" mb={6}>
-            <motion.div variants={itemVariants}>
+            <motion.div variants={animationVariants.fadeDown}>
               <MDTypography
                 variant="caption"
                 fontWeight="bold"
@@ -100,12 +100,12 @@ function TestimonialsSection() {
                 Historias de Éxito
               </MDTypography>
             </motion.div>
-            <motion.div variants={itemVariants}>
+            <motion.div variants={animationVariants.fadeUp}>
               <MDTypography variant="h3" mt={2} mb={1}>
                 Opiniones Reales, Resultados Reales
               </MDTypography>
             </motion.div>
-            <motion.div variants={itemVariants}>
+            <motion.div variants={animationVariants.fadeUp}>
               <MDTypography variant="body1" color="text">
                 Descubre cómo GoalTime transforma la experiencia de jugadores y dueños de canchas en
                 toda la comunidad deportiva.
@@ -115,17 +115,25 @@ function TestimonialsSection() {
 
           {/* Grid de Testimonios */}
           <Grid container spacing={4} justifyContent="center">
-            {testimonials.map((testimonial) => (
+            {testimonials.map((testimonial, index) => (
               <Grid item xs={12} md={4} key={testimonial.author}>
                 <motion.div
-                  variants={itemVariants}
-                  whileHover={{ y: -8 }}
-                  transition={{ type: "spring", stiffness: 300 }}
+                  variants={getTestimonialVariants(index)}
+                  whileHover={hoverVariants.lift}
+                  whileTap={{ scale: 0.98 }}
                 >
-                  <Card sx={{ height: "100%", boxShadow: "lg" }}>
+                  <Card
+                    sx={{
+                      height: "100%",
+                      boxShadow: "lg",
+                      transition: "all 0.3s ease",
+                      "&:hover": {
+                        boxShadow: 8,
+                      },
+                    }}
+                  >
                     <MDBox p={3}>
                       {renderStars()}
-                      {/* --- CORRECCIÓN DE COMILLAS --- */}
                       <MDTypography variant="body2" color="text" sx={{ minHeight: "100px" }}>
                         &ldquo;{testimonial.quote}&rdquo;
                       </MDTypography>
@@ -149,7 +157,7 @@ function TestimonialsSection() {
           </Grid>
 
           {/* Calificación Promedio */}
-          <motion.div variants={itemVariants}>
+          <motion.div variants={animationVariants.fadeUp}>
             <MDBox display="flex" justifyContent="center" alignItems="center" gap={1} mt={6}>
               <Icon color="warning">stars</Icon>
               <MDTypography variant="body2" color="text">

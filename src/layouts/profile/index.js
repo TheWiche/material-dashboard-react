@@ -1,10 +1,16 @@
 // src/layouts/profile/index.js
 
-import { useState, useEffect } from "react";
-import { Grid, Card, Divider, Chip, CircularProgress } from "@mui/material";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { Grid, Card, Divider, Chip, CircularProgress, Tooltip } from "@mui/material";
 import { collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
-import { subscribeToFavorites } from "services/firebaseService";
+import {
+  subscribeToFavorites,
+  uploadProfilePhoto,
+  deleteProfilePhoto,
+} from "services/firebaseService";
 import Icon from "@mui/material/Icon";
+import IconButton from "@mui/material/IconButton";
 
 // GoalTime App components
 import MDBox from "components/MDBox";
@@ -28,8 +34,12 @@ import backgroundImage from "assets/images/bg-profile.jpeg";
 
 function Profile() {
   const { userProfile, currentUser } = useAuth();
+  const navigate = useNavigate();
+  const fileInputRef = useRef(null);
   const [reservations, setReservations] = useState([]);
   const [loadingReservations, setLoadingReservations] = useState(true);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState(null);
 
   // Estados para estadísticas
   const [totalReservations, setTotalReservations] = useState(0);
@@ -58,6 +68,50 @@ function Profile() {
       cliente: "success",
     };
     return colorMap[role] || "dark";
+  };
+
+  // Funciones para manejar la foto de perfil
+  const handlePhotoUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file || !currentUser) return;
+
+    setPhotoError(null);
+    setUploadingPhoto(true);
+
+    try {
+      await uploadProfilePhoto(file, currentUser.uid);
+      // El perfil se actualizará automáticamente gracias al listener en AuthContext
+    } catch (error) {
+      console.error("Error al subir foto:", error);
+      setPhotoError(error.message || "Error al subir la foto.");
+    } finally {
+      setUploadingPhoto(false);
+      // Limpiar el input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handlePhotoDelete = async () => {
+    if (!currentUser) return;
+
+    if (!window.confirm("¿Estás seguro de que quieres eliminar tu foto de perfil?")) {
+      return;
+    }
+
+    setPhotoError(null);
+    setUploadingPhoto(true);
+
+    try {
+      await deleteProfilePhoto(currentUser.uid);
+      // El perfil se actualizará automáticamente gracias al listener en AuthContext
+    } catch (error) {
+      console.error("Error al eliminar foto:", error);
+      setPhotoError(error.message || "Error al eliminar la foto.");
+    } finally {
+      setUploadingPhoto(false);
+    }
   };
 
   // Obtener reservaciones del usuario (para clientes)
@@ -286,14 +340,106 @@ function Profile() {
           >
             <Grid container spacing={3} alignItems="center">
               <Grid item>
-                <MDAvatar
-                  src={userProfile?.photoURL || ""}
-                  alt={userProfile?.name || "Usuario"}
-                  size="xl"
-                  shadow="sm"
-                >
-                  {userProfile?.name ? userProfile.name[0].toUpperCase() : "U"}
-                </MDAvatar>
+                <MDBox position="relative" display="inline-block">
+                  <MDAvatar
+                    src={userProfile?.photoURL || ""}
+                    alt={userProfile?.name || "Usuario"}
+                    size="xl"
+                    shadow="sm"
+                  >
+                    {userProfile?.name ? userProfile.name[0].toUpperCase() : "U"}
+                  </MDAvatar>
+                  {/* Botón para cambiar foto */}
+                  <MDBox
+                    position="absolute"
+                    bottom={-4}
+                    right={-4}
+                    sx={{
+                      zIndex: 10,
+                    }}
+                  >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePhotoUpload}
+                      style={{ display: "none" }}
+                      id="photo-upload-input"
+                      disabled={uploadingPhoto}
+                    />
+                    <Tooltip title={uploadingPhoto ? "Subiendo..." : "Cambiar foto de perfil"}>
+                      <span>
+                        <IconButton
+                          size="medium"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={uploadingPhoto}
+                          sx={{
+                            bgcolor: "info.main",
+                            color: "white",
+                            width: 40,
+                            height: 40,
+                            boxShadow: 3,
+                            "&:hover": {
+                              bgcolor: "info.dark",
+                              transform: "scale(1.1)",
+                            },
+                            "&:disabled": { bgcolor: "grey.400" },
+                            transition: "all 0.2s ease-in-out",
+                          }}
+                        >
+                          {uploadingPhoto ? (
+                            <CircularProgress size={20} color="inherit" />
+                          ) : (
+                            <Icon>camera_alt</Icon>
+                          )}
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                  </MDBox>
+                  {/* Botón para eliminar foto (solo si hay foto) */}
+                  {userProfile?.photoURL && (
+                    <MDBox
+                      position="absolute"
+                      top={-4}
+                      right={-4}
+                      sx={{
+                        zIndex: 10,
+                      }}
+                    >
+                      <Tooltip title="Eliminar foto de perfil">
+                        <span>
+                          <IconButton
+                            size="small"
+                            onClick={handlePhotoDelete}
+                            disabled={uploadingPhoto}
+                            sx={{
+                              bgcolor: "error.main",
+                              color: "white",
+                              width: 32,
+                              height: 32,
+                              boxShadow: 3,
+                              "&:hover": {
+                                bgcolor: "error.dark",
+                                transform: "scale(1.1)",
+                              },
+                              "&:disabled": { bgcolor: "grey.400" },
+                              transition: "all 0.2s ease-in-out",
+                            }}
+                          >
+                            <Icon fontSize="small">delete</Icon>
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                    </MDBox>
+                  )}
+                </MDBox>
+                {photoError && (
+                  <MDBox mt={1}>
+                    <MDTypography variant="caption" color="error">
+                      {photoError}
+                    </MDTypography>
+                  </MDBox>
+                )}
               </Grid>
               <Grid item>
                 <MDBox height="100%" mt={0.5} lineHeight={1}>
@@ -511,7 +657,7 @@ function Profile() {
                           color="info"
                           fullWidth
                           size="small"
-                          href="/admin/users"
+                          onClick={() => navigate("/admin/users")}
                         >
                           <Icon sx={{ mr: 1 }}>people</Icon>
                           Gestionar Usuarios
@@ -521,7 +667,7 @@ function Profile() {
                           color="warning"
                           fullWidth
                           size="small"
-                          href="/admin/fields"
+                          onClick={() => navigate("/canchas?status=pending")}
                         >
                           <Icon sx={{ mr: 1 }}>check_circle</Icon>
                           Aprobar Canchas
@@ -535,7 +681,7 @@ function Profile() {
                           color="info"
                           fullWidth
                           size="small"
-                          href="/associate/fields"
+                          onClick={() => navigate("/associate/fields")}
                         >
                           <Icon sx={{ mr: 1 }}>stadium</Icon>
                           Mis Canchas
@@ -545,7 +691,7 @@ function Profile() {
                           color="success"
                           fullWidth
                           size="small"
-                          href="/associate/fields"
+                          onClick={() => navigate("/associate/fields?add=true")}
                         >
                           <Icon sx={{ mr: 1 }}>add</Icon>
                           Agregar Nueva Cancha
@@ -559,7 +705,7 @@ function Profile() {
                           color="info"
                           fullWidth
                           size="small"
-                          href="/canchas"
+                          onClick={() => navigate("/canchas")}
                         >
                           <Icon sx={{ mr: 1 }}>sports_soccer</Icon>
                           Ver Canchas Disponibles
@@ -569,7 +715,7 @@ function Profile() {
                           color="success"
                           fullWidth
                           size="small"
-                          href="/canchas"
+                          onClick={() => navigate("/canchas")}
                         >
                           <Icon sx={{ mr: 1 }}>event</Icon>
                           Hacer una Reserva
@@ -621,7 +767,11 @@ function Profile() {
                         <MDTypography variant="body2" color="text" mb={3}>
                           ¡Comienza a reservar canchas y aparecerán aquí!
                         </MDTypography>
-                        <MDButton variant="gradient" color="info" href="/canchas">
+                        <MDButton
+                          variant="gradient"
+                          color="info"
+                          onClick={() => navigate("/canchas")}
+                        >
                           <Icon sx={{ mr: 1 }}>sports_soccer</Icon>
                           Ver Canchas Disponibles
                         </MDButton>

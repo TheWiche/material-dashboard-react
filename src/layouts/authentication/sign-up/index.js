@@ -89,17 +89,6 @@ function Cover() {
     setStrength(calculatePasswordStrength(password));
   }, [password]);
 
-  // Efecto para redirigir cuando el usuario esté autenticado y el perfil esté cargado
-  useEffect(() => {
-    if (registrationSuccess && !initialAuthLoading && userProfile) {
-      const timer = setTimeout(() => {
-        setIsLoading(false);
-        navigate("/canchas");
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [userProfile, initialAuthLoading, navigate, registrationSuccess]);
-
   const handleRegister = async (event) => {
     event.preventDefault();
     if (password !== confirmPassword) {
@@ -117,7 +106,10 @@ function Cover() {
     setRegistrationSuccess(false);
     try {
       await registerUser(name, email, password);
-      setRegistrationSuccess(true);
+      // Redirigir inmediatamente después del registro exitoso
+      // No usar useEffect porque GuestRoute puede interferir
+      setIsLoading(false);
+      navigate("/authentication/verify-email", { replace: true });
     } catch (error) {
       setErrorMessage(getFriendlyErrorMessage(error.code));
       openErrorSB();
@@ -569,10 +561,10 @@ function Cover() {
 
   return (
     <SplitScreenLayout
-      leftContent={leftContent}
-      rightContent={rightContent}
-      leftWidth="60%"
-      rightWidth="40%"
+      leftContent={rightContent}
+      rightContent={leftContent}
+      leftWidth="40%"
+      rightWidth="60%"
     />
   );
 }

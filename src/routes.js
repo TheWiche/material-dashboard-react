@@ -10,6 +10,7 @@ import Profile from "layouts/profile";
 import Reservations from "layouts/reservations";
 import SignIn from "layouts/authentication/sign-in";
 import SignUp from "layouts/authentication/sign-up";
+import VerifyEmail from "layouts/authentication/verify-email";
 import ResetPassword from "layouts/authentication/reset-password/cover";
 import ConfirmResetPassword from "layouts/authentication/reset-password/confirm";
 import HandleFirebaseAction from "layouts/authentication/reset-password/handle-action";
@@ -148,6 +149,15 @@ const routes = [
     component: (
       <GuestRoute>
         <SignUp />
+      </GuestRoute>
+    ),
+  },
+  {
+    key: "verify-email",
+    route: "/authentication/verify-email",
+    component: (
+      <GuestRoute>
+        <VerifyEmail />
       </GuestRoute>
     ),
   },

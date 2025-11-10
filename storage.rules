@@ -1,0 +1,22 @@
+rules_version = '2';
+// Firebase Storage Security Rules
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Reglas para fotos de perfil
+    match /profile-photos/{userId}/{fileName} {
+      // Solo el usuario autenticado puede subir su propia foto
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId
+        && request.resource.size < 5 * 1024 * 1024  // Máximo 5MB
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Reglas para otras imágenes (canchas, etc.)
+    match /{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+  }
+}
+

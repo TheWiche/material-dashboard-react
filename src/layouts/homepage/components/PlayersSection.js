@@ -1,13 +1,14 @@
 // src/layouts/homepage/components/PlayersSection.js
 
 import React from "react";
-import { motion, useInView } from "framer-motion";
+import { motion } from "framer-motion";
 import { Container, Grid, Card } from "@mui/material";
 import Icon from "@mui/material/Icon";
 import MDBox from "components/MDBox";
 import MDTypography from "components/MDTypography";
 import PropTypes from "prop-types";
 import MDButton from "components/MDButton";
+import { useScrollAnimation, animationVariants, hoverVariants } from "hooks/useScrollAnimation";
 
 // Componente reutilizable para los íconos de características
 function FeatureIcon({ color, children }) {
@@ -18,11 +19,14 @@ function FeatureIcon({ color, children }) {
       alignItems="center"
       width="4rem"
       height="4rem"
-      bgColor={color} // bgColor SÍ acepta colores personalizados
+      bgColor={color}
       color="white"
       variant="gradient"
       borderRadius="lg"
       mb={2}
+      sx={{
+        transition: "transform 0.3s ease",
+      }}
     >
       <Icon fontSize="large">{children}</Icon>
     </MDBox>
@@ -32,16 +36,6 @@ function FeatureIcon({ color, children }) {
 FeatureIcon.propTypes = {
   color: PropTypes.string.isRequired,
   children: PropTypes.node.isRequired,
-};
-
-// Variantes de animación
-const sectionVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
-};
-const itemVariants = {
-  hidden: { y: 20, opacity: 0 },
-  visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } },
 };
 
 // Datos de las tarjetas
@@ -86,20 +80,32 @@ const features = [
 
 function PlayersSection() {
   const { currentUser } = require("context/AuthContext");
-  const ref = React.useRef(null);
-  const isInView = useInView(ref, { once: true, amount: 0.2 });
+  const { ref, isInView } = useScrollAnimation({ once: true, amount: 0.15 });
+
+  // Variantes diferentes para cada tarjeta (alternando)
+  const getCardVariants = (index) => {
+    const variants = [
+      animationVariants.fadeUp,
+      animationVariants.scaleIn,
+      animationVariants.fadeLeft,
+      animationVariants.fadeRight,
+      animationVariants.rotateIn,
+      animationVariants.slideUp,
+    ];
+    return variants[index % variants.length];
+  };
 
   return (
     <MDBox id="jugadores" ref={ref} component="section" py={8} bgColor="white">
       <Container>
         <motion.div
-          variants={sectionVariants}
+          variants={animationVariants.staggerContainer}
           initial="hidden"
           animate={isInView ? "visible" : "hidden"}
         >
           {/* Cabecera de la Sección */}
           <MDBox textAlign="center" mb={6}>
-            <motion.div variants={itemVariants}>
+            <motion.div variants={animationVariants.fadeDown}>
               <MDTypography
                 variant="caption"
                 fontWeight="bold"
@@ -115,12 +121,12 @@ function PlayersSection() {
                 Soluciones para Jugadores
               </MDTypography>
             </motion.div>
-            <motion.div variants={itemVariants}>
+            <motion.div variants={animationVariants.fadeUp}>
               <MDTypography variant="h3" mt={2} mb={1}>
                 Juega, Reserva y Disfruta
               </MDTypography>
             </motion.div>
-            <motion.div variants={itemVariants}>
+            <motion.div variants={animationVariants.fadeUp}>
               <MDTypography variant="body1" color="text">
                 Encuentra, reserva y juega en las mejores canchas deportivas cerca de ti. ¡Tu
                 partido ideal comienza aquí!
@@ -133,11 +139,22 @@ function PlayersSection() {
             {features.map((feature, index) => (
               <Grid item xs={12} md={6} lg={4} key={index}>
                 <motion.div
-                  variants={itemVariants}
-                  whileHover={{ y: -8, scale: 1.03 }}
-                  transition={{ type: "spring", stiffness: 300 }}
+                  variants={getCardVariants(index)}
+                  whileHover={hoverVariants.lift}
+                  whileTap={{ scale: 0.98 }}
                 >
-                  <Card sx={{ height: "100%", boxShadow: "none", border: "1px solid #E0E1E3" }}>
+                  <Card
+                    sx={{
+                      height: "100%",
+                      boxShadow: "none",
+                      border: "1px solid #E0E1E3",
+                      transition: "all 0.3s ease",
+                      "&:hover": {
+                        boxShadow: 4,
+                        borderColor: "transparent",
+                      },
+                    }}
+                  >
                     <MDBox p={3} textAlign="center">
                       <FeatureIcon color={feature.color}>{feature.icon}</FeatureIcon>
                       <MDTypography variant="h5" fontWeight="medium" mb={1}>
@@ -154,13 +171,9 @@ function PlayersSection() {
           </Grid>
 
           {/* Botón "Explora Canchas" */}
-          <motion.div variants={itemVariants}>
+          <motion.div variants={animationVariants.fadeUp}>
             <MDBox display="flex" justifyContent="center" mt={6}>
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                transition={{ type: "spring", stiffness: 400, damping: 10 }}
-              >
-                {/* --- CORRECCIÓN DE COLOR --- */}
+              <motion.div whileHover={hoverVariants.scale} whileTap={{ scale: 0.95 }}>
                 <MDButton
                   component={require("react-router-dom").Link}
                   to={currentUser ? "/canchas" : "/authentication/sign-in"}

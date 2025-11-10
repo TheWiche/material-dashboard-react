@@ -83,7 +83,7 @@ function HomepageHeader({ light: initialLight }) {
             alignItems="center"
           >
             <MDBox component="img" src={logo} alt="GoalTime Logo" width="2rem" />
-            <MDTypography variant="h6" fontWeight="bold" color="#344767" sx={{ ml: 1 }}>
+            <MDTypography variant="h6" fontWeight="bold" color="dark" sx={{ ml: 1 }}>
               GoalTime
             </MDTypography>
           </MDBox>
@@ -244,7 +244,7 @@ function HomepageHeader({ light: initialLight }) {
               <MDTypography
                 variant="h6"
                 fontWeight="bold"
-                color="#344767" // Siempre oscuro para el logo
+                color="dark" // Siempre oscuro para el logo
                 sx={{ ml: 1, display: { xs: "none", sm: "block" } }}
               >
                 GoalTime

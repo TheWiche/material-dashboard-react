@@ -15,6 +15,7 @@ import {
   subscribeToFavorites,
 } from "services/firebaseService";
 import { useAuth } from "context/AuthContext";
+import useDebounce from "hooks/useDebounce";
 
 // @mui material components
 import Grid from "@mui/material/Grid";
@@ -26,6 +27,7 @@ import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import MDBadge from "components/MDBadge";
 import Tooltip from "@mui/material/Tooltip";
+import MDInput from "components/MDInput";
 
 // GoalTime App components
 import MDBox from "components/MDBox";
@@ -46,9 +48,12 @@ function Canchas() {
   const location = useLocation();
   const navigate = useNavigate();
   const [fields, setFields] = useState([]);
+  const [filteredFields, setFilteredFields] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterMenu, setFilterMenu] = useState(null);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const [isReservationModalOpen, setIsReservationModalOpen] = useState(false);
   const [selectedField, setSelectedField] = useState(null);
   const [loadingReservation, setLoadingReservation] = useState(false);
@@ -63,6 +68,8 @@ function Canchas() {
   const [favoriteIds, setFavoriteIds] = useState([]);
   const [togglingFavorite, setTogglingFavorite] = useState(null);
   const hasProcessedEditParam = useRef(false);
+  const hasProcessedFieldIdParam = useRef(false);
+  const fieldRefs = useRef({});
 
   const openFilterMenu = (event) => setFilterMenu(event.currentTarget);
   const closeFilterMenu = () => setFilterMenu(null);
@@ -70,7 +77,89 @@ function Canchas() {
     console.log("Filtro seleccionado:", status); // Debug temporal
     setStatusFilter(status);
     closeFilterMenu();
+    // Actualizar la URL sin recargar la página
+    const searchParams = new URLSearchParams(location.search);
+    if (status === "all") {
+      searchParams.delete("status");
+    } else {
+      searchParams.set("status", status);
+    }
+    const newSearch = searchParams.toString();
+    navigate(`/canchas${newSearch ? `?${newSearch}` : ""}`, { replace: true });
   };
+
+  // Detectar parámetro 'status' en la URL y establecer el filtro inicial
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const statusParam = searchParams.get("status");
+    if (
+      statusParam &&
+      ["all", "approved", "pending", "rejected", "disabled"].includes(statusParam)
+    ) {
+      setStatusFilter(statusParam);
+    }
+  }, [location.search]);
+
+  // Filtrar canchas según el término de búsqueda
+  useEffect(() => {
+    if (!debouncedSearchTerm) {
+      setFilteredFields(fields);
+      return;
+    }
+
+    const lowercasedSearch = debouncedSearchTerm.toLowerCase();
+    const filtered = fields.filter((field) => {
+      const nameMatch = field.name?.toLowerCase().includes(lowercasedSearch) || false;
+      const addressMatch = field.address?.toLowerCase().includes(lowercasedSearch) || false;
+      const descriptionMatch = field.description?.toLowerCase().includes(lowercasedSearch) || false;
+      return nameMatch || addressMatch || descriptionMatch;
+    });
+
+    setFilteredFields(filtered);
+  }, [fields, debouncedSearchTerm]);
+
+  // Detectar parámetro 'fieldId' en la URL y hacer scroll a esa cancha
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const fieldIdParam = searchParams.get("fieldId");
+
+    if (
+      fieldIdParam &&
+      !hasProcessedFieldIdParam.current &&
+      !loading &&
+      filteredFields.length > 0
+    ) {
+      hasProcessedFieldIdParam.current = true;
+
+      // Esperar un momento para que el DOM se renderice
+      setTimeout(() => {
+        const fieldElement = fieldRefs.current[fieldIdParam];
+        if (fieldElement) {
+          fieldElement.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+          // Resaltar la cancha brevemente
+          fieldElement.style.transition = "box-shadow 0.3s ease";
+          fieldElement.style.boxShadow = "0 0 20px rgba(25, 118, 210, 0.5)";
+          setTimeout(() => {
+            fieldElement.style.boxShadow = "";
+          }, 2000);
+        }
+
+        // Limpiar el parámetro de la URL después de hacer scroll
+        const newSearchParams = new URLSearchParams(location.search);
+        newSearchParams.delete("fieldId");
+        const newSearch = newSearchParams.toString();
+        navigate(`/canchas${newSearch ? `?${newSearch}` : ""}`, { replace: true });
+      }, 500);
+    }
+
+    // Resetear la bandera cuando cambia el parámetro
+    if (!fieldIdParam) {
+      hasProcessedFieldIdParam.current = false;
+    }
+  }, [location.search, loading, filteredFields, navigate]);
 
   // Detectar parámetro 'edit' en la URL y abrir modal automáticamente
   useEffect(() => {
@@ -390,7 +479,7 @@ function Canchas() {
       <DashboardNavbar />
       <MDBox py={3} px={3}>
         <MDBox mb={3}>
-          <MDBox display="flex" justifyContent="space-between" alignItems="center">
+          <MDBox display="flex" justifyContent="space-between" alignItems="center" mb={2}>
             <MDTypography variant="h4" fontWeight="bold">
               {userProfile?.role === "admin" ? filterTitles[statusFilter] : "Canchas Disponibles"}
             </MDTypography>
@@ -407,15 +496,36 @@ function Canchas() {
               <MenuItem onClick={() => handleFilterSelect("disabled")}>Deshabilitadas</MenuItem>
             </Menu>
           </MDBox>
+
+          {/* Buscador */}
+          <MDBox mb={3}>
+            <MDInput
+              placeholder="Buscar canchas por nombre, dirección o descripción..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              fullWidth
+              icon={<Icon>search</Icon>}
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  backgroundColor: "background.paper",
+                },
+              }}
+            />
+          </MDBox>
+
           <Grid container spacing={3}>
             {loading ? (
               <Grid item xs={12} sx={{ textAlign: "center" }}>
                 <CircularProgress color="info" />
               </Grid>
-            ) : fields.length > 0 ? (
-              fields.map((field) => (
+            ) : filteredFields.length > 0 ? (
+              filteredFields.map((field) => (
                 <Grid item xs={12} md={6} lg={4} key={field.id}>
-                  <Card>
+                  <Card
+                    ref={(el) => {
+                      if (el) fieldRefs.current[field.id] = el;
+                    }}
+                  >
                     <MDBox position="relative">
                       {field.imageUrl && (
                         <MDBox
@@ -565,9 +675,30 @@ function Canchas() {
               ))
             ) : (
               <Grid item xs={12}>
-                <MDTypography>
-                  No hay canchas que coincidan con el filtro seleccionado.
-                </MDTypography>
+                <MDBox textAlign="center" py={4}>
+                  <Icon sx={{ fontSize: "4rem", color: "text.secondary", mb: 2 }}>
+                    {searchTerm ? "search_off" : "sports_soccer"}
+                  </Icon>
+                  <MDTypography variant="h6" color="text" mb={1}>
+                    {searchTerm ? "No se encontraron canchas" : "No hay canchas disponibles"}
+                  </MDTypography>
+                  <MDTypography variant="body2" color="text.secondary">
+                    {searchTerm
+                      ? `No hay canchas que coincidan con "${searchTerm}"`
+                      : "No hay canchas que coincidan con el filtro seleccionado."}
+                  </MDTypography>
+                  {searchTerm && (
+                    <MDButton
+                      variant="outlined"
+                      color="info"
+                      size="small"
+                      onClick={() => setSearchTerm("")}
+                      sx={{ mt: 2 }}
+                    >
+                      Limpiar búsqueda
+                    </MDButton>
+                  )}
+                </MDBox>
               </Grid>
             )}
           </Grid>

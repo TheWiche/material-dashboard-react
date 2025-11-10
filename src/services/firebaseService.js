@@ -15,9 +15,14 @@ import {
   getIdToken,
   sendPasswordResetEmail,
   confirmPasswordReset,
+  sendEmailVerification,
+  applyActionCode,
+  onAuthStateChanged,
+  reload,
 } from "firebase/auth";
 import {
   getFirestore,
+  connectFirestoreEmulator,
   doc,
   setDoc,
   updateDoc,
@@ -31,7 +36,17 @@ import {
   where,
   orderBy,
   onSnapshot,
+  enableNetwork,
+  disableNetwork,
 } from "firebase/firestore";
+import {
+  getStorage,
+  ref,
+  uploadBytes,
+  uploadBytesResumable,
+  getDownloadURL,
+  deleteObject,
+} from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAYNTJFFdA7pPR3WGJv0mUTc328FRZ3gg8",
@@ -47,6 +62,28 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const storage = getStorage(app);
+
+// Manejar errores de red de Firestore (bloqueadores de anuncios, etc.)
+// Esto ayuda a que la app funcione incluso si hay extensiones bloqueando Firestore
+if (typeof window !== "undefined") {
+  // Intentar habilitar la red si está deshabilitada
+  enableNetwork(db).catch(() => {
+    // Ignorar errores silenciosamente - puede ser bloqueado por extensiones del navegador
+    // No mostrar nada en consola para evitar spam
+  });
+
+  // Interceptar errores de red de Firestore globalmente
+  const originalError = console.error;
+  console.error = (...args) => {
+    // Filtrar errores de Firestore bloqueados por cliente
+    const errorString = args.join(" ");
+    if (errorString.includes("ERR_BLOCKED_BY_CLIENT") && errorString.includes("firestore")) {
+      return; // No mostrar estos errores
+    }
+    originalError.apply(console, args);
+  };
+}
 // --- FIN DE LA INICIALIZACIÓN ---
 
 // 👇 FUNCIÓN registerUser SIMPLIFICADA
@@ -62,6 +99,41 @@ export const registerUser = async (name, email, password) => {
     createdAt: serverTimestamp(),
   };
   await setDoc(doc(db, "users", user.uid), userProfile);
+
+  // Enviar email de verificación
+  try {
+    let continueUrl;
+
+    // Determinar la URL correcta según el entorno (igual que en sendPasswordReset)
+    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+      // Desarrollo: usar HTTP
+      continueUrl = `${window.location.origin}/authentication/verify-email`;
+    } else {
+      // Producción: forzar HTTPS (Firebase requiere HTTPS para dominios de producción)
+      // Usar el hostname tal cual (con o sin www) para que funcione con ambos
+      // IMPORTANTE: Ambos dominios deben estar autorizados en Firebase Console
+      const hostname = window.location.hostname;
+      const port = window.location.port ? `:${window.location.port}` : "";
+      continueUrl = `https://www.${hostname}${port}/authentication/verify-email`;
+    }
+
+    console.log("Enviando email de verificación:");
+    console.log("- Email:", user.email);
+    console.log("- Continue URL:", continueUrl);
+    console.log("- Origin:", window.location.origin);
+    console.log("- Hostname:", window.location.hostname);
+
+    await sendEmailVerification(user, {
+      url: continueUrl,
+      handleCodeInApp: false,
+    });
+
+    console.log("Email de verificación enviado exitosamente");
+  } catch (error) {
+    console.error("Error enviando email de verificación:", error);
+    // No lanzamos el error para que el registro continúe
+  }
+
   return userProfile; // Devuelve el perfil
 };
 
@@ -73,6 +145,15 @@ export const loginUser = async (email, password, rememberMe) => {
 
   const userCredential = await signInWithEmailAndPassword(auth, email, password);
   const user = userCredential.user;
+
+  // Verificar si el email está verificado
+  // NO cerrar sesión, solo lanzar error para que el frontend redirija
+  if (!user.emailVerified) {
+    const error = new Error("Email no verificado");
+    error.code = "auth/email-not-verified";
+    throw error;
+  }
+
   const userDocRef = doc(db, "users", user.uid);
   const userDocSnap = await getDoc(userDocRef);
 
@@ -323,7 +404,21 @@ export const createField = async (fieldData) => {
     };
 
     const docRef = await addDoc(collection(db, "canchas"), fieldDoc);
-    return { id: docRef.id, ...fieldDoc };
+    const newField = { id: docRef.id, ...fieldDoc };
+
+    // Crear notificaciones para admins sobre la nueva cancha pendiente
+    try {
+      // Obtener el nombre del usuario actual
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      const userName = userDoc.exists() ? userDoc.data().name : "Un asociado";
+
+      await notifyAdminsFieldPending(docRef.id, fieldData.name || "Nueva cancha", userName);
+    } catch (notificationError) {
+      console.error("Error al crear notificaciones:", notificationError);
+      // No fallar la operación principal si las notificaciones fallan
+    }
+
+    return newField;
   } catch (error) {
     console.error("Error al crear cancha:", error);
     throw new Error(error.message || "Error al crear la cancha.");
@@ -920,6 +1015,36 @@ export const notifyFieldRejected = async (fieldId, fieldName, ownerId) => {
   }
 };
 
+// Crear notificaciones para admins cuando se crea una cancha pendiente
+export const notifyAdminsFieldPending = async (fieldId, fieldName, ownerName) => {
+  try {
+    // Obtener todos los usuarios admin
+    const adminsQuery = query(collection(db, "users"), where("role", "==", "admin"));
+    const adminsSnapshot = await getDocs(adminsQuery);
+
+    // Crear notificación para cada admin
+    const notificationPromises = adminsSnapshot.docs.map((adminDoc) => {
+      const adminId = adminDoc.id;
+      return createNotification({
+        userId: adminId,
+        type: "field_pending",
+        title: "Nueva Cancha Pendiente",
+        message: `La cancha "${fieldName}" de ${
+          ownerName || "un asociado"
+        } está pendiente de aprobación.`,
+        relatedId: fieldId,
+        actionUrl: `/canchas?fieldId=${fieldId}&status=pending`,
+        icon: "pending_actions",
+        color: "warning",
+      });
+    });
+
+    await Promise.all(notificationPromises);
+  } catch (error) {
+    console.error("Error al crear notificaciones para admins:", error);
+  }
+};
+
 // Crear notificación cuando se crea una reserva (para cliente)
 export const notifyReservationCreated = async (reservationId, fieldName, clientId) => {
   try {
@@ -1130,4 +1255,238 @@ export const sendTicketByEmail = async (ticketData) => {
   }
 };
 
-export { auth, db };
+// 👇 FUNCIONES PARA FOTOS DE PERFIL
+
+// Subir foto de perfil
+export const uploadProfilePhoto = async (file, userId) => {
+  try {
+    const user = auth.currentUser;
+    if (!user || user.uid !== userId) {
+      throw new Error("No autorizado para subir esta foto.");
+    }
+
+    // Validar tipo de archivo
+    if (!file.type.startsWith("image/")) {
+      throw new Error("El archivo debe ser una imagen.");
+    }
+
+    // Validar tamaño (máximo 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      throw new Error("La imagen no puede ser mayor a 5MB.");
+    }
+
+    // Crear referencia en Storage con nombre único
+    const timestamp = Date.now();
+    const fileName = `${timestamp}_${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+    const storageRef = ref(storage, `profile-photos/${userId}/${fileName}`);
+
+    console.log("Subiendo foto a:", `profile-photos/${userId}/${fileName}`);
+
+    // Subir archivo con metadata usando uploadBytesResumable para mejor manejo de CORS
+    const metadata = {
+      contentType: file.type,
+      customMetadata: {
+        uploadedBy: userId,
+        uploadedAt: timestamp.toString(),
+      },
+    };
+
+    // Usar uploadBytesResumable que maneja mejor CORS y permite monitoreo de progreso
+    const uploadTask = uploadBytesResumable(storageRef, file, metadata);
+
+    // Esperar a que la subida se complete
+    const snapshot = await new Promise((resolve, reject) => {
+      uploadTask.on(
+        "state_changed",
+        (snapshot) => {
+          // Progreso de la subida (opcional, para mostrar progreso)
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          console.log(`Progreso de subida: ${progress.toFixed(2)}%`);
+        },
+        (error) => {
+          console.error("Error durante la subida:", error);
+          reject(error);
+        },
+        () => {
+          // Subida completada
+          resolve(uploadTask.snapshot);
+        }
+      );
+    });
+
+    console.log("Foto subida exitosamente:", snapshot.ref.fullPath);
+
+    // Obtener URL de descarga
+    const downloadURL = await getDownloadURL(snapshot.ref);
+    console.log("URL de descarga obtenida:", downloadURL);
+
+    // Actualizar perfil del usuario en Firestore
+    const userRef = doc(db, "users", userId);
+    await updateDoc(userRef, {
+      photoURL: downloadURL,
+      updatedAt: serverTimestamp(),
+    });
+
+    console.log("Perfil actualizado en Firestore");
+    return downloadURL;
+  } catch (error) {
+    console.error("Error al subir foto de perfil:", error);
+    console.error("Detalles del error:", {
+      code: error.code,
+      message: error.message,
+      stack: error.stack,
+    });
+
+    // Mensajes de error más específicos
+    if (error.code === "storage/unauthorized") {
+      throw new Error("No tienes permisos para subir archivos. Contacta al administrador.");
+    } else if (error.code === "storage/canceled") {
+      throw new Error("La subida fue cancelada.");
+    } else if (error.code === "storage/unknown") {
+      throw new Error("Error desconocido al subir la foto. Verifica tu conexión a internet.");
+    }
+
+    throw new Error(error.message || "Error al subir la foto de perfil.");
+  }
+};
+
+// Eliminar foto de perfil
+export const deleteProfilePhoto = async (userId) => {
+  try {
+    const user = auth.currentUser;
+    if (!user || user.uid !== userId) {
+      throw new Error("No autorizado para eliminar esta foto.");
+    }
+
+    // Obtener URL actual de la foto
+    const userRef = doc(db, "users", userId);
+    const userDoc = await getDoc(userRef);
+
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      const photoURL = userData.photoURL;
+
+      // Si hay una foto, eliminarla de Storage
+      if (photoURL && photoURL.includes("firebasestorage.googleapis.com")) {
+        try {
+          // Extraer la ruta del Storage desde la URL
+          const urlParts = photoURL.split("/");
+          const pathIndex = urlParts.findIndex((part) => part === "o");
+          if (pathIndex !== -1 && pathIndex + 1 < urlParts.length) {
+            const encodedPath = urlParts[pathIndex + 1].split("?")[0];
+            const decodedPath = decodeURIComponent(encodedPath);
+            const storageRef = ref(storage, decodedPath);
+            await deleteObject(storageRef);
+          }
+        } catch (storageError) {
+          console.warn("Error al eliminar foto de Storage (puede que ya no exista):", storageError);
+          // Continuar aunque falle la eliminación de Storage
+        }
+      }
+
+      // Actualizar perfil del usuario en Firestore
+      await updateDoc(userRef, {
+        photoURL: null,
+        updatedAt: serverTimestamp(),
+      });
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Error al eliminar foto de perfil:", error);
+    throw new Error(error.message || "Error al eliminar la foto de perfil.");
+  }
+};
+
+// 👇 FUNCIONES PARA VERIFICACIÓN DE EMAIL
+/**
+ * Reenvía el email de verificación al usuario actual
+ */
+export const resendVerificationEmail = async () => {
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error("No hay usuario autenticado");
+  }
+  if (user.emailVerified) {
+    throw new Error("El email ya está verificado");
+  }
+
+  let continueUrl;
+
+  // Determinar la URL correcta según el entorno (igual que en sendPasswordReset)
+  if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+    // Desarrollo: usar HTTP
+    continueUrl = `${window.location.origin}/authentication/verify-email`;
+  } else {
+    // Producción: forzar HTTPS (Firebase requiere HTTPS para dominios de producción)
+    // Usar el hostname tal cual (con o sin www) para que funcione con ambos
+    // IMPORTANTE: Ambos dominios deben estar autorizados en Firebase Console
+    const hostname = window.location.hostname;
+    const port = window.location.port ? `:${window.location.port}` : "";
+    continueUrl = `https://www.${hostname}${port}/authentication/verify-email`;
+  }
+
+  console.log("Reenviando email de verificación:");
+  console.log("- Email:", user.email);
+  console.log("- Continue URL:", continueUrl);
+
+  await sendEmailVerification(user, {
+    url: continueUrl,
+    handleCodeInApp: false,
+  });
+};
+
+/**
+ * Verifica si el email del usuario actual está verificado
+ * Recarga el usuario para obtener el estado más reciente
+ */
+export const checkEmailVerification = async () => {
+  const user = auth.currentUser;
+  if (!user) {
+    return false;
+  }
+
+  // Recargar el usuario para obtener el estado más reciente
+  await reload(user);
+
+  return user.emailVerified;
+};
+
+/**
+ * Aplica el código de verificación de email (oobCode)
+ * @param {string} oobCode - Código de verificación recibido por email
+ */
+export const verifyEmailWithCode = async (oobCode) => {
+  try {
+    await applyActionCode(auth, oobCode);
+    return { success: true };
+  } catch (error) {
+    console.error("Error verificando email con código:", error);
+    throw error;
+  }
+};
+
+/**
+ * Suscribe a cambios en el estado de autenticación y verificación de email
+ * @param {Function} callback - Función que se ejecuta cuando cambia el estado
+ * @returns {Function} Función para cancelar la suscripción
+ */
+export const subscribeToEmailVerification = (callback) => {
+  return onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      // Recargar el usuario para obtener el estado más reciente
+      try {
+        await reload(user);
+        callback(user.emailVerified, user);
+      } catch (error) {
+        console.error("Error recargando usuario:", error);
+        callback(user.emailVerified, user);
+      }
+    } else {
+      callback(false, null);
+    }
+  });
+};
+
+export { auth, db, storage };
