@@ -20,27 +20,35 @@ function GuestRoute({ children }) {
 
   // Si hay un usuario logueado y NO estamos en la página de verificación ni en sign-up
   // (permitir que sign-up redirija por sí mismo)
-  if (currentUser && userProfile && !isVerifyEmailPage && !isSignUpPage) {
+  if (currentUser && !isVerifyEmailPage && !isSignUpPage) {
     // Excluir usuarios que se autenticaron con Google/Facebook (ya vienen verificados)
     const isSocialAuth = currentUser.providerData?.some(
       (provider) => provider.providerId === "google.com" || provider.providerId === "facebook.com"
     );
 
-    // Si el email no está verificado Y no es autenticación social, redirigir a verificación
     // IMPORTANTE: Verificar directamente desde currentUser.emailVerified para obtener el valor más reciente
     const isEmailVerified = currentUser.emailVerified || emailVerified;
 
+    // Si el email no está verificado Y no es autenticación social, redirigir a verificación
     if (!isEmailVerified && !isSocialAuth) {
       return <Navigate to="/authentication/verify-email" replace />;
     }
 
     // Solo redirigir según rol si el email está verificado o es autenticación social
+    // IMPORTANTE: Esperar a que el perfil se cargue antes de redirigir para evitar redirecciones incorrectas
     if (isEmailVerified || isSocialAuth) {
-      if (userProfile.role === "cliente") {
-        return <Navigate to="/canchas" replace />;
-      } else {
-        return <Navigate to="/dashboard" replace />;
+      // Si tenemos el perfil, redirigir según el rol
+      if (userProfile) {
+        if (userProfile.role === "cliente") {
+          return <Navigate to="/canchas" replace />;
+        } else {
+          return <Navigate to="/dashboard" replace />;
+        }
       }
+      // Si no tenemos el perfil aún pero el email está verificado, NO redirigir
+      // Permitir que la página se muestre y esperar a que el perfil se cargue
+      // Esto evita la doble redirección (inicio -> dashboard -> canchas)
+      return null; // O simplemente no hacer nada, dejar que se muestre la página
     }
   }
 

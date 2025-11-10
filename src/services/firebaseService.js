@@ -19,6 +19,8 @@ import {
   applyActionCode,
   onAuthStateChanged,
   reload,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
 } from "firebase/auth";
 import {
   getFirestore,
@@ -105,6 +107,10 @@ export const registerUser = async (name, email, password) => {
   let emailError = null;
 
   try {
+    // IMPORTANTE: La URL de acción personalizada en Firebase debe mantenerse en:
+    // https://www.goaltime.site/__/auth/action (valor por defecto)
+    // Esto permite que HandleFirebaseAction maneje todas las acciones (verifyEmail, resetPassword, etc.)
+
     let continueUrl;
 
     // Determinar la URL correcta según el entorno
@@ -226,6 +232,42 @@ export const signInWithFacebook = async () => {
   }
   const finalProfileSnap = await getDoc(userDocRef);
   return finalProfileSnap.data();
+};
+
+// 👇 FUNCIÓN PARA VERIFICAR LA CONTRASEÑA ACTUAL DEL USUARIO
+export const verifyCurrentPassword = async (password) => {
+  try {
+    const user = auth.currentUser;
+    if (!user || !user.email) {
+      throw new Error("No hay un usuario autenticado.");
+    }
+
+    // Verificar que el usuario tenga un proveedor de email/password
+    const isEmailPassword = user.providerData.some(
+      (provider) => provider.providerId === "password"
+    );
+
+    if (!isEmailPassword) {
+      throw new Error("Este método de autenticación no requiere contraseña.");
+    }
+
+    // Crear credenciales con el email y contraseña
+    const credential = EmailAuthProvider.credential(user.email, password);
+
+    // Reautenticar al usuario con las credenciales
+    // Si la contraseña es incorrecta, esto lanzará un error
+    await reauthenticateWithCredential(user, credential);
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error al verificar contraseña:", error);
+    if (error.code === "auth/wrong-password" || error.code === "auth/invalid-credential") {
+      const passwordError = new Error("La contraseña actual es incorrecta.");
+      passwordError.code = "auth/wrong-password";
+      throw passwordError;
+    }
+    throw error;
+  }
 };
 
 // 👇 FUNCIÓN PARA ENVIAR EMAIL DE RESTABLECIMIENTO DE CONTRASEÑA
@@ -1436,6 +1478,10 @@ export const resendVerificationEmail = async () => {
     throw new Error("El email ya está verificado");
   }
 
+  // IMPORTANTE: La URL de acción personalizada en Firebase debe mantenerse en:
+  // https://www.goaltime.site/__/auth/action (valor por defecto)
+  // Esto permite que HandleFirebaseAction maneje todas las acciones (verifyEmail, resetPassword, etc.)
+
   let continueUrl;
 
   // Determinar la URL correcta según el entorno
@@ -1445,7 +1491,7 @@ export const resendVerificationEmail = async () => {
   } else {
     // Producción: usar el dominio exacto que el usuario está usando (con o sin www)
     // IMPORTANTE: Tanto goaltime.site como www.goaltime.site deben estar autorizados en Firebase Console
-    const protocol = window.location.protocol === "https:" ? "https" : "https"; // Forzar HTTPS en producción
+    const protocol = "https"; // Forzar HTTPS en producción
     const hostname = window.location.hostname; // Usar el hostname exacto (con o sin www)
     const port = window.location.port ? `:${window.location.port}` : "";
     continueUrl = `${protocol}://${hostname}${port}/authentication/verify-email`;
@@ -1507,6 +1553,18 @@ export const checkEmailVerification = async () => {
 export const verifyEmailWithCode = async (oobCode) => {
   try {
     await applyActionCode(auth, oobCode);
+
+    // CRÍTICO: Recargar el usuario inmediatamente después de aplicar el código
+    // para que el estado de emailVerified se actualice
+    const user = auth.currentUser;
+    if (user) {
+      await reload(user);
+      console.log(
+        "Usuario recargado después de verificación. Email verificado:",
+        user.emailVerified
+      );
+    }
+
     return { success: true };
   } catch (error) {
     console.error("Error verificando email con código:", error);

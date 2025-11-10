@@ -8,6 +8,7 @@ import { useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import MDBox from "components/MDBox";
 import { FullScreenLoader } from "components/FullScreenLoader";
+import { verifyEmailWithCode } from "services/firebaseService";
 
 /**
  * Componente para manejar la redirección de Firebase desde /__/auth/action
@@ -36,82 +37,125 @@ function HandleFirebaseAction() {
 
     // Manejar verificación de email
     if (mode === "verifyEmail" && oobCode) {
-      // Firebase ya verifica el email automáticamente cuando se accede a este enlace
-      // Solo necesitamos redirigir a la página de verificación
-      let redirectUrl;
+      console.log("Firebase Action Handler - Procesando verificación de email");
 
-      if (continueUrl && continueUrl.startsWith("http")) {
-        // Decodificar la URL si está codificada
-        try {
-          const decodedUrl = decodeURIComponent(continueUrl);
-          redirectUrl = decodedUrl;
-        } catch (e) {
-          redirectUrl = continueUrl;
-        }
+      // IMPORTANTE: Aplicar el código de verificación ANTES de redirigir
+      verifyEmailWithCode(oobCode)
+        .then(() => {
+          console.log("Email verificado exitosamente");
 
-        // Si el continueUrl apunta a localhost pero estamos en producción, reemplazarlo
-        if (redirectUrl.includes("localhost") && window.location.origin.includes("goaltime.site")) {
-          redirectUrl = redirectUrl.replace(/http:\/\/localhost:\d+/, "https://www.goaltime.site");
-        } else if (redirectUrl.includes("localhost") && window.location.hostname === "localhost") {
-          // Si estamos en localhost y el continueUrl también es localhost, usarlo tal cual
-          // No hacer nada, usar la URL tal cual
-        } else {
-          // Si el continueUrl no tiene www pero estamos en goaltime.site, agregarlo
-          if (redirectUrl.includes("goaltime.site") && !redirectUrl.includes("www.")) {
-            redirectUrl = redirectUrl.replace("https://goaltime.site", "https://www.goaltime.site");
+          // Construir URL de redirección - usar continueUrl si existe, sino usar la página de verificación
+          let redirectUrl;
+          if (continueUrl && continueUrl.startsWith("http")) {
+            try {
+              redirectUrl = decodeURIComponent(continueUrl);
+              // Normalizar URL si es necesario
+              if (
+                redirectUrl.includes("localhost") &&
+                window.location.origin.includes("goaltime.site")
+              ) {
+                redirectUrl = redirectUrl.replace(
+                  /http:\/\/localhost:\d+/,
+                  "https://www.goaltime.site"
+                );
+              } else if (redirectUrl.includes("goaltime.site") && !redirectUrl.includes("www.")) {
+                redirectUrl = redirectUrl.replace(
+                  "https://goaltime.site",
+                  "https://www.goaltime.site"
+                );
+              }
+            } catch (e) {
+              redirectUrl = continueUrl;
+            }
+          } else {
+            // Construir URL de verificación basada en el dominio actual
+            if (
+              window.location.hostname.includes("goaltime.site") &&
+              !window.location.hostname.includes("www.")
+            ) {
+              redirectUrl = `https://www.goaltime.site/authentication/verify-email`;
+            } else {
+              redirectUrl = `${window.location.origin}/authentication/verify-email`;
+            }
           }
-        }
-      } else {
-        // Construir la URL de verificación con el dominio actual
-        if (
-          window.location.hostname.includes("goaltime.site") &&
-          !window.location.hostname.includes("www.")
-        ) {
-          redirectUrl = `https://www.goaltime.site/authentication/verify-email`;
-        } else {
-          redirectUrl = `${window.location.origin}/authentication/verify-email`;
-        }
-      }
 
-      console.log("Firebase Action Handler - Redirigiendo a página de verificación:", redirectUrl);
-      window.location.href = redirectUrl;
+          console.log("Firebase Action Handler - Redirigiendo a:", redirectUrl);
+          // Usar navigate con replace en lugar de window.location para mantener la sesión de React
+          // Pero como estamos en un componente que no tiene acceso a navigate, usamos window.location
+          // El problema es que esto causa una recarga completa. En su lugar, construimos la URL
+          // y redirigimos, pero asegurándonos de que la sesión se mantenga.
+          window.location.href = redirectUrl;
+        })
+        .catch((error) => {
+          console.error("Error verificando email:", error);
+          // Redirigir a la página de verificación para mostrar el error
+          const redirectUrl = window.location.origin.includes("goaltime.site")
+            ? `https://www.goaltime.site/authentication/verify-email`
+            : `${window.location.origin}/authentication/verify-email`;
+          window.location.replace(redirectUrl);
+        });
       return;
     }
 
     // Manejar restablecimiento de contraseña
     if (mode === "resetPassword" && oobCode) {
+      console.log("Firebase Action Handler - Procesando restablecimiento de contraseña");
+
       let redirectUrl;
 
       if (continueUrl && continueUrl.startsWith("http")) {
-        // Si el continueUrl apunta a localhost pero estamos en producción, reemplazarlo
-        if (continueUrl.includes("localhost") && window.location.origin.includes("goaltime.site")) {
-          redirectUrl = continueUrl.replace(/http:\/\/localhost:\d+/, "https://www.goaltime.site");
-          redirectUrl = `${redirectUrl}${redirectUrl.includes("?") ? "&" : "?"}oobCode=${oobCode}`;
-        } else if (continueUrl.includes("localhost") && window.location.hostname === "localhost") {
-          // Si estamos en localhost y el continueUrl también es localhost, usarlo tal cual
-          redirectUrl = `${continueUrl}${continueUrl.includes("?") ? "&" : "?"}oobCode=${oobCode}`;
-        } else {
-          // Si el continueUrl no tiene www pero estamos en goaltime.site, agregarlo
-          let finalUrl = continueUrl;
-          if (continueUrl.includes("goaltime.site") && !continueUrl.includes("www.")) {
-            finalUrl = continueUrl.replace("https://goaltime.site", "https://www.goaltime.site");
+        try {
+          // Decodificar continueUrl si está codificado
+          let decodedUrl = continueUrl;
+          try {
+            decodedUrl = decodeURIComponent(continueUrl);
+          } catch (e) {
+            decodedUrl = continueUrl;
           }
-          redirectUrl = `${finalUrl}${finalUrl.includes("?") ? "&" : "?"}oobCode=${oobCode}`;
+
+          // Normalizar URL si es necesario
+          if (
+            decodedUrl.includes("localhost") &&
+            window.location.origin.includes("goaltime.site")
+          ) {
+            decodedUrl = decodedUrl.replace(/http:\/\/localhost:\d+/, "https://www.goaltime.site");
+          } else if (decodedUrl.includes("goaltime.site") && !decodedUrl.includes("www.")) {
+            decodedUrl = decodedUrl.replace("https://goaltime.site", "https://www.goaltime.site");
+          }
+
+          // Agregar oobCode a la URL
+          redirectUrl = `${decodedUrl}${
+            decodedUrl.includes("?") ? "&" : "?"
+          }oobCode=${encodeURIComponent(oobCode)}`;
+        } catch (e) {
+          // Si hay error, construir URL manualmente
+          redirectUrl = window.location.origin.includes("goaltime.site")
+            ? `https://www.goaltime.site/authentication/reset-password/confirm?oobCode=${encodeURIComponent(
+                oobCode
+              )}`
+            : `${
+                window.location.origin
+              }/authentication/reset-password/confirm?oobCode=${encodeURIComponent(oobCode)}`;
         }
       } else {
-        // Construir la URL de confirmación con el dominio actual (forzar www en producción)
+        // Construir la URL de confirmación con el dominio actual
         if (
           window.location.hostname.includes("goaltime.site") &&
           !window.location.hostname.includes("www.")
         ) {
-          redirectUrl = `https://www.goaltime.site/authentication/reset-password/confirm?oobCode=${oobCode}`;
+          redirectUrl = `https://www.goaltime.site/authentication/reset-password/confirm?oobCode=${encodeURIComponent(
+            oobCode
+          )}`;
         } else {
-          redirectUrl = `${window.location.origin}/authentication/reset-password/confirm?oobCode=${oobCode}`;
+          redirectUrl = `${
+            window.location.origin
+          }/authentication/reset-password/confirm?oobCode=${encodeURIComponent(oobCode)}`;
         }
       }
 
       console.log("Firebase Action Handler - Redirigiendo a:", redirectUrl);
-      window.location.href = redirectUrl;
+      // Usar replace para evitar problemas de historial
+      window.location.replace(redirectUrl);
       return;
     }
 

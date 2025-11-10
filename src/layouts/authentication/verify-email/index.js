@@ -1,24 +1,17 @@
 // src/layouts/authentication/verify-email/index.js
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { CircularProgress, LinearProgress } from "@mui/material";
-import { Email, CheckCircle, Error as ErrorIcon, Refresh, MailOutline } from "@mui/icons-material";
+import { Email, CheckCircle, Refresh, MailOutline } from "@mui/icons-material";
 import MDBox from "components/MDBox";
 import MDTypography from "components/MDTypography";
 import MDButton from "components/MDButton";
 import MDSnackbar from "components/MDSnackbar";
 import SplitScreenLayout from "layouts/authentication/components/SplitScreenLayout";
 import bgImage from "assets/images/bg-sign-up-cover.png";
-import {
-  auth,
-  resendVerificationEmail,
-  checkEmailVerification,
-  subscribeToEmailVerification,
-  verifyEmailWithCode,
-} from "services/firebaseService";
+import { auth, resendVerificationEmail, verifyEmailWithCode } from "services/firebaseService";
 import { useAuth } from "context/AuthContext";
-import { useSearchParams } from "react-router-dom";
 
 function VerifyEmail() {
   const navigate = useNavigate();
@@ -31,15 +24,17 @@ function VerifyEmail() {
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [userEmail, setUserEmail] = useState("");
-  const [checkCount, setCheckCount] = useState(0);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
-  const [lastResendTime, setLastResendTime] = useState(null);
-  const unsubscribeRef = useRef(null);
   const checkIntervalRef = useRef(null);
   const cooldownIntervalRef = useRef(null);
   const { userProfile, initialAuthLoading, currentUser } = useAuth();
 
-  // Cargar cooldown desde localStorage al montar
+  const openErrorSB = () => setErrorSB(true);
+  const closeErrorSB = () => setErrorSB(false);
+  const openSuccessSB = () => setSuccessSB(true);
+  const closeSuccessSB = () => setSuccessSB(false);
+
+  // Cargar cooldown desde localStorage
   useEffect(() => {
     if (currentUser) {
       const storedCooldown = localStorage.getItem(`emailCooldown_${currentUser.uid}`);
@@ -52,7 +47,6 @@ function VerifyEmail() {
         if (remaining > 0) {
           setCooldownSeconds(remaining);
         } else {
-          // Limpiar si ya expiró
           localStorage.removeItem(`emailCooldown_${currentUser.uid}`);
           localStorage.removeItem(`emailCooldownTime_${currentUser.uid}`);
         }
@@ -60,205 +54,144 @@ function VerifyEmail() {
     }
   }, [currentUser]);
 
-  // Función para obtener el oobCode de diferentes lugares (igual que en reset password)
-  const getOobCodeFromUrl = useCallback(() => {
-    // Intentar obtener de searchParams (React Router)
-    const fromSearchParams = searchParams.get("oobCode") || searchParams.get("oobcode");
-    if (fromSearchParams) return fromSearchParams;
-
-    // Intentar obtener directamente de window.location (por si Firebase redirige)
-    const urlParams = new URLSearchParams(window.location.search);
-    const fromWindow = urlParams.get("oobCode") || urlParams.get("oobcode");
-    if (fromWindow) return fromWindow;
-
-    // Intentar obtener del hash (algunos casos de Firebase)
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const fromHash = hashParams.get("oobCode") || hashParams.get("oobcode");
-    if (fromHash) return fromHash;
-
-    return null;
-  }, [searchParams]);
-
-  const openErrorSB = () => setErrorSB(true);
-  const closeErrorSB = () => setErrorSB(false);
-  const openSuccessSB = () => setSuccessSB(true);
-  const closeSuccessSB = () => setSuccessSB(false);
-
-  // Verificar estado inicial y configurar monitoreo en tiempo real
+  // Verificar estado del email y procesar oobCode si existe
   useEffect(() => {
-    const checkInitialState = async () => {
-      // Primero, verificar si estamos en /__/auth/action y procesar el código
-      if (window.location.pathname === "/__/auth/action") {
-        const urlParams = new URLSearchParams(window.location.search);
-        const actionCode = urlParams.get("oobCode");
-        const mode = urlParams.get("mode");
-        const continueUrl = urlParams.get("continueUrl");
+    if (initialAuthLoading) return;
 
-        if (mode === "verifyEmail" && actionCode) {
-          console.log("Procesando código de verificación de email desde /__/auth/action");
-          try {
-            // Aplicar el código de verificación
-            await verifyEmailWithCode(actionCode);
-            console.log("Email verificado exitosamente con código");
+    const checkVerification = async () => {
+      // PRIMERO: Si hay un oobCode en la URL, procesarlo
+      const oobCode = searchParams.get("oobCode") || searchParams.get("oobcode");
+      const mode = searchParams.get("mode");
 
-            // Redirigir a la página de verificación (o continueUrl si existe)
-            let redirectUrl;
-            if (continueUrl && continueUrl.startsWith("http")) {
-              try {
-                redirectUrl = decodeURIComponent(continueUrl);
-              } catch (e) {
-                redirectUrl = continueUrl;
-              }
-            } else {
-              redirectUrl = `${window.location.origin}/authentication/verify-email`;
-            }
+      if (oobCode && mode === "verifyEmail") {
+        console.log("Procesando código de verificación desde URL");
+        setIsChecking(true);
 
-            // Limpiar la URL y redirigir
-            window.location.href = redirectUrl;
-            return;
-          } catch (error) {
-            console.error("Error aplicando código de verificación:", error);
-            setErrorMessage(
-              "El enlace de verificación no es válido o ha expirado. Por favor, solicita uno nuevo."
-            );
-            openErrorSB();
-            setIsChecking(false);
-            return;
-          }
-        }
-      }
-
-      // Verificar si hay un oobCode en la URL (después de redirección desde /__/auth/action)
-      const oobCode = getOobCodeFromUrl();
-      if (oobCode) {
-        console.log("Procesando código de verificación de email desde URL");
         try {
           await verifyEmailWithCode(oobCode);
-          console.log("Email verificado exitosamente con código");
-          // Limpiar la URL removiendo el oobCode
-          const newUrl = window.location.pathname;
-          window.history.replaceState({}, "", newUrl);
+          console.log("Email verificado exitosamente");
+
+          // Limpiar la URL removiendo los parámetros
+          window.history.replaceState({}, "", window.location.pathname);
+
+          // Esperar un momento para que Firebase actualice el estado
+          await new Promise((resolve) => setTimeout(resolve, 500));
+
+          // Recargar el usuario para obtener el estado actualizado
+          const user = auth.currentUser;
+          if (user) {
+            await user.reload();
+          }
         } catch (error) {
-          console.error("Error aplicando código de verificación:", error);
+          console.error("Error verificando email con código:", error);
           setErrorMessage(
             "El enlace de verificación no es válido o ha expirado. Por favor, solicita uno nuevo."
           );
           openErrorSB();
+          setIsChecking(false);
+          return;
         }
       }
 
       const user = auth.currentUser;
 
       if (!user) {
-        // Si no hay usuario, redirigir a sign-up
-        navigate("/authentication/sign-up");
+        navigate("/authentication/sign-up", { replace: true });
         return;
       }
 
       setUserEmail(user.email || "");
 
-      // Verificar estado inicial
       try {
-        const verified = await checkEmailVerification();
+        // Recargar usuario para obtener estado más reciente
+        await user.reload();
+        const verified = user.emailVerified;
+
         setIsVerified(verified);
         setIsChecking(false);
 
-        // Mostrar mensaje si el email no se envió durante el registro
-        if (userProfile?.emailVerificationError) {
-          const error = userProfile.emailVerificationError;
-          if (error.code === "auth/unauthorized-continue-uri") {
-            setErrorMessage(
-              `El dominio "${window.location.hostname}" no está autorizado en Firebase. Por favor, contacta al administrador o agrega este dominio en Firebase Console > Authentication > Settings > Authorized domains.`
-            );
-            openErrorSB();
-          } else if (error.code === "auth/too-many-requests") {
-            setCooldownSeconds(300); // 5 minutos
-            setErrorMessage(
-              "Has enviado demasiados emails de verificación. Por favor, espera 5 minutos antes de intentar nuevamente."
-            );
-            openErrorSB();
-          }
-        }
-
         if (verified) {
-          // Si ya está verificado, redirigir después de un breve delay
-          setTimeout(() => {
-            navigate("/canchas");
-          }, 2000);
+          setSuccessMessage("¡Email verificado exitosamente! Redirigiendo...");
+          openSuccessSB();
+
+          // IMPORTANTE: Esperar a que el perfil se cargue antes de redirigir
+          // Si userProfile no está disponible, esperar un poco más
+          const redirectWithRole = () => {
+            if (userProfile?.role === "cliente") {
+              navigate("/canchas", { replace: true });
+            } else if (userProfile?.role) {
+              navigate("/dashboard", { replace: true });
+            } else {
+              // Si no tenemos el perfil aún, redirigir a dashboard por defecto
+              // El ProtectedRoute o Dashboard manejará la redirección correcta
+              navigate("/dashboard", { replace: true });
+            }
+          };
+
+          // Redirigir inmediatamente si tenemos el perfil, sino esperar un poco
+          if (userProfile?.role) {
+            setTimeout(redirectWithRole, 1000);
+          } else {
+            // Esperar un poco más para que se cargue el perfil
+            setTimeout(redirectWithRole, 2000);
+          }
           return;
         }
+
+        // Si no está verificado, verificar periódicamente cada 2 segundos
+        checkIntervalRef.current = setInterval(async () => {
+          try {
+            await user.reload();
+            if (user.emailVerified) {
+              setIsVerified(true);
+              setIsChecking(false);
+              setSuccessMessage("¡Email verificado exitosamente! Redirigiendo...");
+              openSuccessSB();
+
+              if (checkIntervalRef.current) {
+                clearInterval(checkIntervalRef.current);
+              }
+
+              const redirectWithRole = () => {
+                if (userProfile?.role === "cliente") {
+                  navigate("/canchas", { replace: true });
+                } else if (userProfile?.role) {
+                  navigate("/dashboard", { replace: true });
+                } else {
+                  // Si no tenemos el perfil aún, redirigir a dashboard por defecto
+                  navigate("/dashboard", { replace: true });
+                }
+              };
+
+              // Redirigir inmediatamente si tenemos el perfil, sino esperar un poco
+              if (userProfile?.role) {
+                setTimeout(redirectWithRole, 1000);
+              } else {
+                setTimeout(redirectWithRole, 2000);
+              }
+            }
+          } catch (error) {
+            console.error("Error verificando email:", error);
+          }
+        }, 2000);
       } catch (error) {
         console.error("Error verificando email:", error);
         setIsChecking(false);
       }
-
-      // Configurar suscripción en tiempo real
-      unsubscribeRef.current = subscribeToEmailVerification((verified, user) => {
-        if (verified) {
-          setIsVerified(true);
-          setIsChecking(false);
-          setSuccessMessage("¡Email verificado exitosamente! Redirigiendo...");
-          openSuccessSB();
-
-          // Redirigir después de 2 segundos
-          setTimeout(() => {
-            navigate("/canchas");
-          }, 2000);
-        } else if (user) {
-          setIsVerified(false);
-          setIsChecking(false);
-        } else {
-          // Usuario no autenticado
-          navigate("/authentication/sign-up");
-        }
-      });
-
-      // También verificar periódicamente cada 3 segundos (fallback)
-      checkIntervalRef.current = setInterval(async () => {
-        try {
-          const verified = await checkEmailVerification();
-          if (verified && !isVerified) {
-            setIsVerified(true);
-            setIsChecking(false);
-            setSuccessMessage("¡Email verificado exitosamente! Redirigiendo...");
-            openSuccessSB();
-
-            setTimeout(() => {
-              navigate("/canchas");
-            }, 2000);
-          }
-          setCheckCount((prev) => prev + 1);
-        } catch (error) {
-          console.error("Error en verificación periódica:", error);
-        }
-      }, 3000);
     };
 
-    if (!initialAuthLoading) {
-      checkInitialState();
-    }
+    checkVerification();
 
-    // Cleanup
     return () => {
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-      }
       if (checkIntervalRef.current) {
         clearInterval(checkIntervalRef.current);
       }
-      if (cooldownIntervalRef.current) {
-        clearInterval(cooldownIntervalRef.current);
-      }
     };
-  }, [navigate, initialAuthLoading, isVerified]);
+  }, [initialAuthLoading, navigate, userProfile, searchParams]);
 
-  // Cooldown de 60 segundos entre reenvíos
-  const COOLDOWN_DURATION = 60; // segundos
-
-  // Efecto para manejar el cooldown y persistirlo en localStorage
+  // Cooldown timer
   useEffect(() => {
     if (cooldownSeconds > 0 && currentUser) {
-      // Guardar en localStorage
       localStorage.setItem(`emailCooldown_${currentUser.uid}`, cooldownSeconds.toString());
       localStorage.setItem(`emailCooldownTime_${currentUser.uid}`, Date.now().toString());
 
@@ -266,7 +199,6 @@ function VerifyEmail() {
         setCooldownSeconds((prev) => {
           const newValue = prev <= 1 ? 0 : prev - 1;
 
-          // Actualizar localStorage
           if (currentUser) {
             if (newValue === 0) {
               localStorage.removeItem(`emailCooldown_${currentUser.uid}`);
@@ -285,7 +217,6 @@ function VerifyEmail() {
         cooldownIntervalRef.current = null;
       }
 
-      // Limpiar localStorage si el cooldown terminó
       if (cooldownSeconds === 0 && currentUser) {
         localStorage.removeItem(`emailCooldown_${currentUser.uid}`);
         localStorage.removeItem(`emailCooldownTime_${currentUser.uid}`);
@@ -300,7 +231,6 @@ function VerifyEmail() {
   }, [cooldownSeconds, currentUser]);
 
   const handleResendEmail = async () => {
-    // Verificar cooldown
     if (cooldownSeconds > 0) {
       setErrorMessage(
         `Por favor, espera ${cooldownSeconds} segundo${
@@ -316,28 +246,18 @@ function VerifyEmail() {
       await resendVerificationEmail();
       setSuccessMessage("Email de verificación reenviado. Revisa tu bandeja de entrada.");
       openSuccessSB();
-      // Iniciar cooldown
-      setCooldownSeconds(COOLDOWN_DURATION);
-      setLastResendTime(Date.now());
+      setCooldownSeconds(60);
     } catch (error) {
       let message = error.message || "Error al reenviar el email. Por favor, inténtalo más tarde.";
 
-      // Manejo específico para too-many-requests
       if (error.code === "auth/too-many-requests") {
-        // Cooldown más largo si Firebase bloquea
-        setCooldownSeconds(300); // 5 minutos
+        setCooldownSeconds(300);
         message =
-          error.message ||
           "Has enviado demasiados emails. Por favor, espera 5 minutos antes de intentar nuevamente.";
       } else if (error.code === "auth/unauthorized-continue-uri") {
-        // Error de dominio no autorizado - mensaje más detallado
-        message =
-          error.message ||
-          `El dominio no está autorizado en Firebase. Por favor, agrega "${window.location.hostname}" en Firebase Console > Authentication > Settings > Authorized domains.`;
-        // No aplicar cooldown para este error, es un problema de configuración
+        message = `El dominio no está autorizado en Firebase. Por favor, agrega "${window.location.hostname}" en Firebase Console > Authentication > Settings > Authorized domains.`;
       } else {
-        // Cooldown normal para otros errores
-        setCooldownSeconds(COOLDOWN_DURATION);
+        setCooldownSeconds(60);
       }
 
       setErrorMessage(message);
@@ -351,7 +271,7 @@ function VerifyEmail() {
     navigate("/authentication/sign-in");
   };
 
-  // Right Panel Content (40% - Image with Overlay)
+  // Right Panel Content
   const rightContent = (
     <MDBox
       width="100%"
@@ -383,7 +303,7 @@ function VerifyEmail() {
     </MDBox>
   );
 
-  // Left Panel Content (60% - White Form)
+  // Left Panel Content
   const leftContent = (
     <MDBox
       width="100%"
@@ -397,7 +317,6 @@ function VerifyEmail() {
       sx={{ position: "relative" }}
     >
       <MDBox maxWidth="480px" mx="auto" width="100%">
-        {/* Estado de verificación */}
         {isChecking ? (
           <>
             <MDBox display="flex" justifyContent="center" mb={3}>
@@ -468,7 +387,6 @@ function VerifyEmail() {
               automáticamente cuando verifiques tu email.
             </MDTypography>
 
-            {/* Botón de reenvío */}
             <MDButton
               variant="outlined"
               fullWidth
@@ -498,7 +416,6 @@ function VerifyEmail() {
                 : "Reenviar Email de Verificación"}
             </MDButton>
 
-            {/* Botón para ir a iniciar sesión */}
             <MDButton
               variant="text"
               fullWidth
@@ -517,59 +434,29 @@ function VerifyEmail() {
           </>
         )}
 
-        {/* Información adicional */}
         {!isVerified && !isChecking && (
-          <>
-            {/* Mensaje de advertencia si el email no se envió durante el registro */}
-            {userProfile?.emailVerificationError && (
-              <MDBox
-                mt={4}
-                mb={2}
-                p={2}
-                borderRadius={2}
-                sx={{
-                  backgroundColor: "warning.lighter",
-                  border: "1px solid",
-                  borderColor: "warning.main",
-                }}
-              >
-                <MDTypography variant="caption" color="warning.dark" display="block" mb={1}>
-                  <strong>⚠️ Email no enviado durante el registro</strong>
-                </MDTypography>
-                <MDTypography variant="caption" color="warning.dark">
-                  {userProfile.emailVerificationError.code === "auth/unauthorized-continue-uri"
-                    ? `El dominio no está autorizado en Firebase. Por favor, contacta al administrador o intenta reenviar el email usando el botón de abajo.`
-                    : userProfile.emailVerificationError.code === "auth/too-many-requests"
-                    ? "Has enviado demasiados emails. Por favor, espera unos minutos antes de intentar reenviar."
-                    : "Hubo un problema al enviar el email de verificación. Por favor, intenta reenviar el email usando el botón de abajo."}
-                </MDTypography>
-              </MDBox>
-            )}
-
-            <MDBox
-              mt={userProfile?.emailVerificationError ? 0 : 4}
-              p={2}
-              borderRadius={2}
-              sx={{
-                backgroundColor: "info.lighter",
-                border: "1px solid",
-                borderColor: "info.main",
-              }}
-            >
-              <MDTypography variant="caption" color="info.dark" display="block" mb={1}>
-                <strong>¿No recibiste el email?</strong>
-              </MDTypography>
-              <MDTypography variant="caption" color="info.dark">
-                • Revisa tu carpeta de spam o correo no deseado
-                <br />• Asegúrate de que el email sea correcto
-                <br />• Espera unos minutos y haz clic en &quot;Reenviar Email de Verificación&quot;
-              </MDTypography>
-            </MDBox>
-          </>
+          <MDBox
+            mt={4}
+            p={2}
+            borderRadius={2}
+            sx={{
+              backgroundColor: "info.lighter",
+              border: "1px solid",
+              borderColor: "info.main",
+            }}
+          >
+            <MDTypography variant="caption" color="info.dark" display="block" mb={1}>
+              <strong>¿No recibiste el email?</strong>
+            </MDTypography>
+            <MDTypography variant="caption" color="info.dark">
+              • Revisa tu carpeta de spam o correo no deseado
+              <br />• Asegúrate de que el email sea correcto
+              <br />• Espera unos minutos y haz clic en &quot;Reenviar Email de Verificación&quot;
+            </MDTypography>
+          </MDBox>
         )}
       </MDBox>
 
-      {/* Snackbars */}
       <MDSnackbar
         color="error"
         icon="warning"

@@ -9,11 +9,6 @@ import MDAvatar from "components/MDAvatar"; // 👈 Importar Avatar
 import Icon from "@mui/material/Icon"; // 👈 Importar Icon
 import PropTypes from "prop-types"; // 👈 Importar PropTypes
 
-// --- (Opcional) Reemplaza esto con las fotos reales de tu equipo ---
-import team1 from "assets/images/team-1.jpg";
-import team2 from "assets/images/team-2.jpg";
-import team3 from "assets/images/team-3.jpg";
-
 // --- Componente para las tarjetas de valores ---
 function ValueCard({ icon, title, description }) {
   return (
@@ -53,14 +48,38 @@ ValueCard.propTypes = {
 };
 
 // --- Componente para las tarjetas de equipo ---
-function TeamCard({ image, name, title }) {
+function TeamCard({ name, title }) {
+  // Obtener las iniciales del nombre
+  const getInitials = (fullName) => {
+    const names = fullName.split(" ");
+    if (names.length >= 2) {
+      return `${names[0][0]}${names[1][0]}`.toUpperCase();
+    }
+    return fullName.substring(0, 2).toUpperCase();
+  };
+
   return (
-    <Card sx={{ textAlign: "center", p: 2, boxShadow: "md" }}>
-      <MDAvatar src={image} alt={name} size="xl" shadow="md" sx={{ mx: "auto" }} />
+    <Card sx={{ textAlign: "center", p: 3, boxShadow: "md", height: "100%" }}>
+      <MDBox display="flex" justifyContent="center" mb={2}>
+        <MDAvatar
+          bgColor="info"
+          size="xxl"
+          shadow="md"
+          sx={{
+            mx: "auto",
+            width: 120,
+            height: 120,
+            fontSize: "2.5rem",
+            fontWeight: "bold",
+          }}
+        >
+          {getInitials(name)}
+        </MDAvatar>
+      </MDBox>
       <MDTypography variant="h6" fontWeight="bold" mt={2} mb={0.5}>
         {name}
       </MDTypography>
-      <MDTypography variant="body2" color="info" textGradient>
+      <MDTypography variant="body2" color="info" textGradient fontWeight="medium">
         {title}
       </MDTypography>
     </Card>
@@ -69,7 +88,6 @@ function TeamCard({ image, name, title }) {
 
 // PropTypes para TeamCard
 TeamCard.propTypes = {
-  image: PropTypes.string.isRequired,
   name: PropTypes.string.isRequired,
   title: PropTypes.string.isRequired,
 };
@@ -137,13 +155,16 @@ function AboutUs() {
         </MDTypography>
         <Grid container spacing={3} justifyContent="center">
           <Grid item xs={12} sm={6} lg={3}>
-            <TeamCard image={team1} name="Juan Pérez" title="Co-Fundador & CEO" />
+            <TeamCard name="Edwin Ceballos" title="Desarrollador" />
           </Grid>
           <Grid item xs={12} sm={6} lg={3}>
-            <TeamCard image={team2} name="Ana García" title="Co-Fundadora & CTO" />
+            <TeamCard name="Joel Barrios" title="Desarrollador" />
           </Grid>
           <Grid item xs={12} sm={6} lg={3}>
-            <TeamCard image={team3} name="Luis Mendoza" title="Diseñador UI/UX" />
+            <TeamCard name="Juan Lemus" title="Desarrollador" />
+          </Grid>
+          <Grid item xs={12} sm={6} lg={3}>
+            <TeamCard name="Nelson Cotes" title="Desarrollador" />
           </Grid>
         </Grid>
       </Container>

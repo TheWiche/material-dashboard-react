@@ -154,7 +154,7 @@ function HeroSection() {
                       >
                         <MDBox p={2}>
                           <MDTypography variant="h4" color="white">
-                            500+
+                            ???+
                           </MDTypography>
                           <MDTypography variant="body2" color="white" opacity={0.8}>
                             Canchas Disponibles
@@ -174,7 +174,7 @@ function HeroSection() {
                       >
                         <MDBox p={2}>
                           <MDTypography variant="h4" color="white">
-                            10K+
+                            ??K+
                           </MDTypography>
                           <MDTypography variant="body2" color="white" opacity={0.8}>
                             Usuarios Activos
@@ -194,7 +194,7 @@ function HeroSection() {
                       >
                         <MDBox p={2}>
                           <MDTypography variant="h4" color="white">
-                            50K+
+                            ??K+
                           </MDTypography>
                           <MDTypography variant="body2" color="white" opacity={0.8}>
                             Reservas Realizadas

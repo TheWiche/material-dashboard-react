@@ -1,12 +1,18 @@
 // src/layouts/homepage/components/ContactSection.js
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { motion } from "framer-motion";
-import { Container, Grid, Card, TextField, Button, Divider } from "@mui/material";
+import { Container, Grid, Card, TextField, Button, Divider, Box } from "@mui/material";
 import Icon from "@mui/material/Icon";
+import ReCAPTCHA from "react-google-recaptcha";
 import MDBox from "components/MDBox";
 import MDTypography from "components/MDTypography";
 import MDSnackbar from "components/MDSnackbar";
 import { useScrollAnimation, animationVariants } from "hooks/useScrollAnimation";
+
+// Clave de sitio de reCAPTCHA (clave de prueba de Google para desarrollo)
+// Para producción, reemplazar con tu propia clave desde Google reCAPTCHA Console
+// O configurar la variable de entorno REACT_APP_RECAPTCHA_SITE_KEY
+const RECAPTCHA_SITE_KEY = "6LfAcwgsAAAAAEZJBVAhHWN1xjmipXMjRk7qkUPw";
 
 function ContactSection() {
   // --- Estados para el formulario ---
@@ -16,6 +22,9 @@ function ContactSection() {
     message: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [recaptchaValue, setRecaptchaValue] = useState(null);
+  const [captchaError, setCaptchaError] = useState(false);
+  const recaptchaRef = useRef(null);
 
   // --- Estados para las notificaciones (como en tu archivo Notifications.js) ---
   const [successSB, setSuccessSB] = useState(false);
@@ -35,10 +44,29 @@ function ContactSection() {
     }));
   };
 
+  // --- Manejador para cuando se completa el reCAPTCHA ---
+  const handleRecaptchaChange = (value) => {
+    setRecaptchaValue(value);
+    setCaptchaError(false); // Limpia el error cuando se completa
+  };
+
+  // --- Manejador para cuando expira el reCAPTCHA ---
+  const handleRecaptchaExpired = () => {
+    setRecaptchaValue(null);
+  };
+
   // --- Manejador para enviar el formulario con fetch ---
   const handleSubmit = async (e) => {
     e.preventDefault(); // Evita la recarga de la página
+
+    // Validar que el reCAPTCHA esté completado
+    if (!recaptchaValue) {
+      setCaptchaError(true);
+      return;
+    }
+
     setIsSubmitting(true);
+    setCaptchaError(false);
 
     try {
       const response = await fetch("https://formspree.io/f/mrbrzboy", {
@@ -47,12 +75,19 @@ function ContactSection() {
           "Content-Type": "application/json",
           Accept: "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          "g-recaptcha-response": recaptchaValue, // Incluir el token del captcha
+        }),
       });
 
       if (response.ok) {
         // Éxito
         setFormData({ name: "", email: "", message: "" }); // Resetea el formulario
+        setRecaptchaValue(null); // Resetea el captcha
+        if (recaptchaRef.current) {
+          recaptchaRef.current.reset(); // Resetea el widget del captcha
+        }
         openSuccessSB(); // Muestra la notificación de éxito
       } else {
         // Error de Formspree (ej. validación)
@@ -234,12 +269,30 @@ function ContactSection() {
                       variant="outlined"
                       disabled={isSubmitting} // 👈 Deshabilitado al enviar
                     />
+                    {/* reCAPTCHA */}
+                    <Box sx={{ mt: 2, mb: 2, display: "flex", justifyContent: "center" }}>
+                      <ReCAPTCHA
+                        ref={recaptchaRef}
+                        sitekey={RECAPTCHA_SITE_KEY}
+                        onChange={handleRecaptchaChange}
+                        onExpired={handleRecaptchaExpired}
+                      />
+                    </Box>
+                    {captchaError && (
+                      <MDTypography
+                        variant="caption"
+                        color="error"
+                        sx={{ ml: 2, mb: 1, display: "block" }}
+                      >
+                        Por favor, completa el reCAPTCHA para continuar.
+                      </MDTypography>
+                    )}
                     <Button
                       type="submit" // 👈 El tipo "submit" disparará el onSubmit del <form>
                       variant="contained"
                       color="warning"
                       sx={{
-                        mt: 3,
+                        mt: 2,
                         fontWeight: "bold",
                         fontSize: 16,
                         px: 3,
@@ -248,7 +301,7 @@ function ContactSection() {
                       }}
                       startIcon={<Icon>send</Icon>}
                       fullWidth
-                      disabled={isSubmitting} // 👈 Deshabilitado al enviar
+                      disabled={isSubmitting || !recaptchaValue} // 👈 Deshabilitado al enviar o si no hay captcha
                     >
                       {/* 👈 Cambia el texto del botón al enviar */}
                       {isSubmitting ? "Enviando..." : "Enviar Mensaje"}

@@ -15,6 +15,7 @@ import {
   Visibility,
   VisibilityOff,
   Help,
+  Close,
 } from "@mui/icons-material";
 import MDBox from "components/MDBox";
 import MDTypography from "components/MDTypography";
@@ -243,8 +244,32 @@ function Cover() {
       justifyContent="center"
       px={{ xs: 3, sm: 6, md: 8 }}
       py={4}
+      sx={{ position: "relative" }}
     >
       {isLoading && <FullScreenLoader />}
+
+      {/* Close Button - Top Right */}
+      <IconButton
+        onClick={() => navigate("/")}
+        sx={{
+          position: "absolute",
+          top: 16,
+          right: 16,
+          backgroundColor: "transparent",
+          color: "text.secondary",
+          width: 40,
+          height: 40,
+          zIndex: 10,
+          transition: "all 0.2s ease-in-out",
+          "&:hover": {
+            backgroundColor: "grey.100",
+            color: "text.primary",
+            transform: "scale(1.1)",
+          },
+        }}
+      >
+        <Close />
+      </IconButton>
 
       {/* Form Content */}
       <MDBox maxWidth="480px" mx="auto" width="100%">

@@ -6,10 +6,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
-import Card from "@mui/material/Card";
-import Icon from "@mui/material/Icon";
 import InputAdornment from "@mui/material/InputAdornment";
 import IconButton from "@mui/material/IconButton";
+import { Lock, Visibility, VisibilityOff } from "@mui/icons-material";
 
 // GoalTime App components
 import MDBox from "components/MDBox";
@@ -18,9 +17,7 @@ import MDInput from "components/MDInput";
 import MDButton from "components/MDButton";
 import MDSnackbar from "components/MDSnackbar";
 import { FullScreenLoader } from "components/FullScreenLoader";
-
-// Authentication layout components
-import CoverLayout from "layouts/authentication/components/CoverLayout";
+import SplitScreenLayout from "layouts/authentication/components/SplitScreenLayout";
 
 // Services
 import { resetPassword } from "services/firebaseService";
@@ -40,18 +37,14 @@ function ConfirmResetPassword() {
   const [isValidCode, setIsValidCode] = useState(true);
 
   // Firebase puede pasar el oobCode de diferentes maneras
-  // También puede venir directamente en la URL cuando el usuario accede desde el email
   const getOobCodeFromUrl = useCallback(() => {
-    // Intentar obtener de searchParams (React Router)
     const fromSearchParams = searchParams.get("oobCode") || searchParams.get("oobcode");
     if (fromSearchParams) return fromSearchParams;
 
-    // Intentar obtener directamente de window.location (por si Firebase redirige)
     const urlParams = new URLSearchParams(window.location.search);
     const fromWindow = urlParams.get("oobCode") || urlParams.get("oobcode");
     if (fromWindow) return fromWindow;
 
-    // Intentar obtener del hash (algunos casos de Firebase)
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const fromHash = hashParams.get("oobCode") || hashParams.get("oobcode");
     if (fromHash) return fromHash;
@@ -62,74 +55,49 @@ function ConfirmResetPassword() {
   const oobCode = getOobCodeFromUrl();
 
   useEffect(() => {
-    // Debug: verificar qué parámetros están llegando
-    const allParams = Object.fromEntries(searchParams.entries());
-    const windowParams = Object.fromEntries(new URLSearchParams(window.location.search).entries());
-    console.log("Parámetros de URL (React Router):", allParams);
-    console.log("Parámetros de URL (window.location):", windowParams);
-    console.log("oobCode encontrado:", oobCode);
-    console.log("URL completa:", window.location.href);
-    console.log("Hash:", window.location.hash);
-    console.log("Pathname:", window.location.pathname);
-
-    // Si estamos en la página de acción de Firebase (/__/auth/action), extraer el oobCode y redirigir
+    // Si estamos en la página de acción de Firebase, redirigir
     if (window.location.pathname === "/__/auth/action") {
       const urlParams = new URLSearchParams(window.location.search);
       const actionCode = urlParams.get("oobCode");
       const continueUrl = urlParams.get("continueUrl");
 
       if (actionCode) {
-        console.log("Encontrado oobCode en /__/auth/action, redirigiendo...");
-        // Si hay continueUrl y es válida, usarla; si no, construir la URL correcta
+        let redirectUrl;
         if (continueUrl && continueUrl.startsWith("http")) {
-          // Verificar si el continueUrl apunta a localhost pero estamos en producción
-          if (
-            continueUrl.includes("localhost") &&
-            window.location.origin.includes("goaltime.site")
-          ) {
-            // Reemplazar localhost con el dominio de producción (forzar www)
-            let productionUrl = continueUrl.replace(
-              /http:\/\/localhost:\d+/,
-              window.location.origin
-            );
-            // Asegurar que use www en producción
-            if (productionUrl.includes("goaltime.site") && !productionUrl.includes("www.")) {
-              productionUrl = productionUrl.replace(
-                "https://goaltime.site",
+          try {
+            let decodedUrl = decodeURIComponent(continueUrl);
+            if (
+              decodedUrl.includes("localhost") &&
+              window.location.origin.includes("goaltime.site")
+            ) {
+              decodedUrl = decodedUrl.replace(
+                /http:\/\/localhost:\d+/,
                 "https://www.goaltime.site"
               );
+            } else if (decodedUrl.includes("goaltime.site") && !decodedUrl.includes("www.")) {
+              decodedUrl = decodedUrl.replace("https://goaltime.site", "https://www.goaltime.site");
             }
-            window.location.href = `${productionUrl}?oobCode=${actionCode}`;
-          } else {
-            // Si el continueUrl no tiene www pero estamos en goaltime.site, agregarlo
-            let finalUrl = continueUrl;
-            if (continueUrl.includes("goaltime.site") && !continueUrl.includes("www.")) {
-              finalUrl = continueUrl.replace("https://goaltime.site", "https://www.goaltime.site");
-            }
-            window.location.href = `${finalUrl}?oobCode=${actionCode}`;
+            redirectUrl = `${decodedUrl}?oobCode=${actionCode}`;
+          } catch (e) {
+            redirectUrl = `${continueUrl}?oobCode=${actionCode}`;
           }
         } else {
-          // Construir la URL de confirmación con el dominio actual (forzar www en producción)
-          let confirmUrl;
           if (
             window.location.hostname.includes("goaltime.site") &&
             !window.location.hostname.includes("www.")
           ) {
-            confirmUrl = `https://www.goaltime.site/authentication/reset-password/confirm?oobCode=${actionCode}`;
+            redirectUrl = `https://www.goaltime.site/authentication/reset-password/confirm?oobCode=${actionCode}`;
           } else {
-            confirmUrl = `${window.location.origin}/authentication/reset-password/confirm?oobCode=${actionCode}`;
+            redirectUrl = `${window.location.origin}/authentication/reset-password/confirm?oobCode=${actionCode}`;
           }
-          window.location.href = confirmUrl;
         }
+        window.location.href = redirectUrl;
         return;
       }
     }
 
-    // Obtener el código actualizado
     const currentCode = getOobCodeFromUrl();
-
     if (!currentCode) {
-      // Esperar un momento para que Firebase complete la redirección
       const timer = setTimeout(() => {
         const finalCode = getOobCodeFromUrl();
         if (!finalCode) {
@@ -190,23 +158,7 @@ function ConfirmResetPassword() {
       return;
     }
 
-    // Intentar obtener el código de diferentes formas
-    const getCode = () => {
-      if (oobCode) return oobCode;
-      const fromSearch = searchParams.get("oobCode") || searchParams.get("oobcode");
-      if (fromSearch) return fromSearch;
-      const fromWindow =
-        new URLSearchParams(window.location.search).get("oobCode") ||
-        new URLSearchParams(window.location.search).get("oobcode");
-      if (fromWindow) return fromWindow;
-      const fromHash =
-        new URLSearchParams(window.location.hash.substring(1)).get("oobCode") ||
-        new URLSearchParams(window.location.hash.substring(1)).get("oobcode");
-      return fromHash || null;
-    };
-
-    const code = getCode();
-
+    const code = getOobCodeFromUrl();
     if (!code) {
       setSnackbar({
         open: true,
@@ -225,7 +177,6 @@ function ConfirmResetPassword() {
         message: "Tu contraseña ha sido restablecida exitosamente.",
       });
 
-      // Redirigir al login después de 2 segundos
       setTimeout(() => {
         navigate("/authentication/sign-in");
       }, 2000);
@@ -242,158 +193,267 @@ function ConfirmResetPassword() {
 
   const closeSnackbar = () => setSnackbar({ ...snackbar, open: false });
 
-  // Verificar si tenemos un código válido
-  const hasValidCode = getOobCodeFromUrl();
+  // Left Panel Content (40% - Image)
+  const leftContent = (
+    <MDBox
+      width="100%"
+      height="100%"
+      sx={{
+        backgroundImage: `url(${bgImage})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+        position: "relative",
+        "&::before": {
+          content: '""',
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "rgba(0, 0, 0, 0.4)",
+        },
+      }}
+      display="flex"
+      flexDirection="column"
+      justifyContent="flex-end"
+      p={4}
+    >
+      <MDBox sx={{ position: "relative", zIndex: 1 }}>
+        <MDTypography variant="h3" fontWeight="bold" color="white" mb={2}>
+          Nueva Contraseña
+        </MDTypography>
+        <MDTypography variant="body1" color="white" sx={{ opacity: 0.9, maxWidth: "400px" }}>
+          Ingresa tu nueva contraseña para completar el restablecimiento.
+        </MDTypography>
+      </MDBox>
+    </MDBox>
+  );
 
-  if (!isValidCode && !hasValidCode) {
-    return (
-      <CoverLayout coverHeight="50vh" image={bgImage}>
-        <Card>
-          <MDBox
-            variant="gradient"
-            bgColor="error"
-            borderRadius="lg"
-            coloredShadow="error"
-            mx={2}
-            mt={-3}
-            py={2}
-            mb={1}
-            textAlign="center"
-          >
-            <MDTypography variant="h3" fontWeight="medium" color="white" mt={1}>
-              Enlace Inválido
-            </MDTypography>
-            <MDTypography display="block" variant="button" color="white" my={1}>
-              El enlace de restablecimiento no es válido o ha expirado
-            </MDTypography>
-          </MDBox>
-          <MDBox pt={4} pb={3} px={3}>
-            <MDBox textAlign="center" mb={3}>
-              <Icon sx={{ fontSize: "4rem", color: "error.main", mb: 2 }}>error</Icon>
-              <MDTypography variant="body2" color="text">
-                Por favor, solicita un nuevo enlace de restablecimiento.
-              </MDTypography>
-            </MDBox>
-            <MDBox mt={4} mb={1}>
-              <MDButton
-                component={Link}
-                to="/authentication/reset-password"
-                variant="gradient"
-                color="info"
-                fullWidth
-              >
-                Solicitar Nuevo Enlace
-              </MDButton>
-            </MDBox>
-            <MDBox mt={2} mb={1}>
-              <MDButton
-                component={Link}
-                to="/authentication/sign-in"
-                variant="outlined"
-                color="info"
-                fullWidth
-              >
-                Volver a Iniciar Sesión
-              </MDButton>
-            </MDBox>
-          </MDBox>
-        </Card>
-      </CoverLayout>
-    );
-  }
-
-  return (
-    <CoverLayout coverHeight="50vh" image={bgImage}>
+  // Right Panel Content (60% - White Form)
+  const rightContent = (
+    <MDBox
+      width="100%"
+      height="100%"
+      display="flex"
+      flexDirection="column"
+      justifyContent="center"
+      px={{ xs: 3, sm: 6, md: 8 }}
+      py={4}
+      sx={{ position: "relative" }}
+    >
       {isLoading && <FullScreenLoader />}
-      <Card>
-        <MDBox
-          variant="gradient"
-          bgColor="info"
-          borderRadius="lg"
-          coloredShadow="success"
-          mx={2}
-          mt={-3}
-          py={2}
-          mb={1}
-          textAlign="center"
-        >
-          <MDTypography variant="h3" fontWeight="medium" color="white" mt={1}>
+
+      {!isValidCode && !getOobCodeFromUrl() ? (
+        <MDBox maxWidth="480px" mx="auto" width="100%">
+          <MDTypography variant="h3" fontWeight="bold" color="error" mb={2}>
+            Enlace Inválido
+          </MDTypography>
+          <MDTypography variant="body2" color="text" mb={4}>
+            El enlace de restablecimiento no es válido o ha expirado. Por favor, solicita uno nuevo.
+          </MDTypography>
+          <MDBox mt={4} mb={2}>
+            <MDButton
+              component={Link}
+              to="/authentication/reset-password"
+              variant="contained"
+              fullWidth
+              sx={{
+                backgroundColor: (theme) => theme.palette.goaltime.main,
+                color: "white",
+                py: 1.5,
+                textTransform: "none",
+                fontSize: "1rem",
+                fontWeight: "medium",
+                "&:hover": {
+                  backgroundColor: (theme) => theme.palette.goaltime.dark,
+                },
+              }}
+            >
+              Solicitar Nuevo Enlace
+            </MDButton>
+          </MDBox>
+          <MDBox mb={1}>
+            <MDButton
+              component={Link}
+              to="/authentication/sign-in"
+              variant="outlined"
+              fullWidth
+              sx={{
+                borderColor: "grey.300",
+                color: "text.primary",
+                py: 1.5,
+                textTransform: "none",
+                "&:hover": {
+                  borderColor: "grey.400",
+                  backgroundColor: "grey.50",
+                },
+              }}
+            >
+              Volver a Iniciar Sesión
+            </MDButton>
+          </MDBox>
+        </MDBox>
+      ) : (
+        <MDBox maxWidth="480px" mx="auto" width="100%">
+          <MDTypography variant="h3" fontWeight="bold" color="dark" mb={1}>
             Nueva Contraseña
           </MDTypography>
-          <MDTypography display="block" variant="button" color="white" my={1}>
-            Ingresa tu nueva contraseña
+          <MDTypography variant="body2" color="text" mb={4}>
+            Ingresa tu nueva contraseña para completar el restablecimiento
           </MDTypography>
-        </MDBox>
-        <MDBox pt={4} pb={3} px={3}>
-          <MDBox component="form" role="form" onSubmit={handleSubmit}>
-            <MDBox mb={2}>
+
+          <MDBox component="form" onSubmit={handleSubmit}>
+            {/* New Password Input */}
+            <MDBox mb={3}>
+              <MDTypography
+                variant="caption"
+                color="text"
+                fontWeight="medium"
+                mb={1}
+                display="block"
+              >
+                Nueva Contraseña
+              </MDTypography>
               <MDInput
                 type={showPassword ? "text" : "password"}
-                label="Nueva Contraseña"
-                variant="standard"
+                placeholder="********"
                 fullWidth
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 required
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    backgroundColor: "grey.100",
+                    "& fieldset": {
+                      borderColor: "grey.300",
+                    },
+                    "&:hover fieldset": {
+                      borderColor: "grey.400",
+                    },
+                  },
+                }}
                 InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Lock sx={{ color: "text.secondary" }} />
+                    </InputAdornment>
+                  ),
                   endAdornment: (
                     <InputAdornment position="end">
-                      <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
-                        <Icon fontSize="small">
-                          {showPassword ? "visibility" : "visibility_off"}
-                        </Icon>
+                      <IconButton
+                        onClick={() => setShowPassword(!showPassword)}
+                        edge="end"
+                        size="small"
+                      >
+                        {showPassword ? (
+                          <VisibilityOff sx={{ color: "text.secondary" }} />
+                        ) : (
+                          <Visibility sx={{ color: "text.secondary" }} />
+                        )}
                       </IconButton>
                     </InputAdornment>
                   ),
                 }}
               />
             </MDBox>
+
+            {/* Confirm Password Input */}
             <MDBox mb={4}>
+              <MDTypography
+                variant="caption"
+                color="text"
+                fontWeight="medium"
+                mb={1}
+                display="block"
+              >
+                Confirmar Contraseña
+              </MDTypography>
               <MDInput
                 type={showConfirmPassword ? "text" : "password"}
-                label="Confirmar Contraseña"
-                variant="standard"
+                placeholder="********"
                 fullWidth
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    backgroundColor: "grey.100",
+                    "& fieldset": {
+                      borderColor: "grey.300",
+                    },
+                    "&:hover fieldset": {
+                      borderColor: "grey.400",
+                    },
+                  },
+                }}
                 InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Lock sx={{ color: "text.secondary" }} />
+                    </InputAdornment>
+                  ),
                   endAdornment: (
                     <InputAdornment position="end">
                       <IconButton
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                         edge="end"
+                        size="small"
                       >
-                        <Icon fontSize="small">
-                          {showConfirmPassword ? "visibility" : "visibility_off"}
-                        </Icon>
+                        {showConfirmPassword ? (
+                          <VisibilityOff sx={{ color: "text.secondary" }} />
+                        ) : (
+                          <Visibility sx={{ color: "text.secondary" }} />
+                        )}
                       </IconButton>
                     </InputAdornment>
                   ),
                 }}
               />
             </MDBox>
-            <MDBox mt={6} mb={1}>
-              <MDButton
-                type="submit"
-                variant="gradient"
-                color="info"
-                fullWidth
-                disabled={isLoading}
-              >
-                {isLoading ? "Restableciendo..." : "Restablecer Contraseña"}
-              </MDButton>
-            </MDBox>
-            <MDBox mt={3} mb={1} textAlign="center">
-              <MDTypography variant="button" color="text">
+
+            {/* Submit Button */}
+            <MDButton
+              type="submit"
+              variant="contained"
+              fullWidth
+              disabled={isLoading}
+              sx={{
+                backgroundColor: (theme) => theme.palette.goaltime.main,
+                color: "white",
+                py: 1.5,
+                mb: 3,
+                textTransform: "none",
+                fontSize: "1rem",
+                fontWeight: "medium",
+                "&:hover": {
+                  backgroundColor: (theme) => theme.palette.goaltime.dark,
+                },
+                "&:disabled": {
+                  backgroundColor: "grey.300",
+                  color: "grey.500",
+                },
+              }}
+            >
+              {isLoading ? "Restableciendo..." : "Restablecer Contraseña"}
+            </MDButton>
+
+            {/* Sign In Link */}
+            <MDBox textAlign="center">
+              <MDTypography variant="body2" color="text">
                 ¿Recordaste tu contraseña?{" "}
                 <MDTypography
                   component={Link}
                   to="/authentication/sign-in"
-                  variant="button"
-                  color="info"
-                  fontWeight="medium"
-                  textGradient
+                  variant="body2"
+                  sx={{
+                    color: (theme) => theme.palette.goaltime.main,
+                    fontWeight: "bold",
+                    textDecoration: "none",
+                    "&:hover": {
+                      textDecoration: "underline",
+                    },
+                  }}
                 >
                   Iniciar Sesión
                 </MDTypography>
@@ -401,7 +461,7 @@ function ConfirmResetPassword() {
             </MDBox>
           </MDBox>
         </MDBox>
-      </Card>
+      )}
 
       <MDSnackbar
         color={snackbar.color}
@@ -415,7 +475,16 @@ function ConfirmResetPassword() {
         close={closeSnackbar}
         bgWhite={snackbar.color !== "info" && snackbar.color !== "dark"}
       />
-    </CoverLayout>
+    </MDBox>
+  );
+
+  return (
+    <SplitScreenLayout
+      leftContent={leftContent}
+      rightContent={rightContent}
+      leftWidth="40%"
+      rightWidth="60%"
+    />
   );
 }
 
