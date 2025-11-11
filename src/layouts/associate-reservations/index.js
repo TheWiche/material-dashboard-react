@@ -958,7 +958,27 @@ function AssociateReservations() {
                   console.error("Error al obtener información del cliente:", error);
                 }
 
-                // Enviar correo de notificación
+                // Crear notificación en la app para el cliente
+                try {
+                  if (newStatus === "confirmed") {
+                    await notifyReservationConfirmed(
+                      selectedReservation.id,
+                      selectedReservation.fieldName || "la cancha",
+                      selectedReservation.clientId
+                    );
+                  } else if (newStatus === "cancelled") {
+                    await notifyReservationCancelled(
+                      selectedReservation.id,
+                      selectedReservation.fieldName || "la cancha",
+                      selectedReservation.clientId
+                    );
+                  }
+                } catch (notificationError) {
+                  console.error("Error al crear notificación:", notificationError);
+                  // No fallar la operación si la notificación falla
+                }
+
+                // Enviar correo de notificación para cualquier cambio de estado
                 if (clientEmail) {
                   try {
                     await sendReservationStatusChangeEmail(

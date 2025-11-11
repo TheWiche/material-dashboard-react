@@ -46,27 +46,17 @@ export default function useFieldsTableData(searchTerm, statusFilter, onEditField
 
     try {
       // Filtrar solo las canchas del asociado actual
+      // NO usamos orderBy en la query para evitar necesidad de índice compuesto
+      // Ordenaremos siempre en memoria después de obtener los datos
       if (statusFilter !== "all") {
-        // Cuando hay filtro de status, no usamos orderBy para evitar necesidad de índice compuesto
-        // Ordenaremos en memoria después
         q = query(
           collection(db, "canchas"),
           where("ownerId", "==", userProfile.uid),
           where("status", "==", statusFilter)
         );
       } else {
-        // Solo para "all" intentamos usar orderBy
-        try {
-          q = query(
-            collection(db, "canchas"),
-            where("ownerId", "==", userProfile.uid),
-            orderBy("createdAt", "desc")
-          );
-        } catch (orderByError) {
-          // Si falla orderBy, usar query simple sin orderBy
-          console.warn("Error con orderBy, usando query simple:", orderByError);
-          q = query(collection(db, "canchas"), where("ownerId", "==", userProfile.uid));
-        }
+        // Para "all", solo filtrar por ownerId sin orderBy
+        q = query(collection(db, "canchas"), where("ownerId", "==", userProfile.uid));
       }
 
       unsubscribe = onSnapshot(
@@ -86,14 +76,12 @@ export default function useFieldsTableData(searchTerm, statusFilter, onEditField
               };
             });
 
-            // Ordenar por fecha de creación si no hay orderBy en la query
-            if (statusFilter !== "all") {
-              fieldsData.sort((a, b) => {
-                const aTime = a.createdAt?.seconds || 0;
-                const bTime = b.createdAt?.seconds || 0;
-                return bTime - aTime; // Descendente
-              });
-            }
+            // Ordenar siempre por fecha de creación (descendente) en memoria
+            fieldsData.sort((a, b) => {
+              const aTime = a.createdAt?.seconds || a.createdAt?.toMillis?.() / 1000 || 0;
+              const bTime = b.createdAt?.seconds || b.createdAt?.toMillis?.() / 1000 || 0;
+              return bTime - aTime; // Descendente (más recientes primero)
+            });
 
             if (debouncedSearchTerm) {
               const lowercasedFilter = debouncedSearchTerm.toLowerCase();

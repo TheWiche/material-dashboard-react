@@ -882,13 +882,12 @@ export const sendReservationStatusChangeEmail = async (
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        email: clientEmail,
         reservationId: reservationData.id,
-        reservationData: reservationData,
         newStatus: newStatus,
         previousStatus: reservationData.previousStatus || reservationData.status,
         reason: reason || "",
         clientName: clientName || "Cliente",
+        clientEmail: clientEmail, // Enviar el email para que el backend lo use directamente
       }),
     });
 

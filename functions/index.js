@@ -619,7 +619,14 @@ exports.sendReservationStatusChangeEmail = functions.https.onRequest(async (requ
       return response.status(401).json({ error: "Unauthorized: Invalid token." });
     }
 
-    const { reservationId, newStatus, previousStatus, reason, clientName } = request.body;
+    const {
+      reservationId,
+      newStatus,
+      previousStatus,
+      reason,
+      clientName,
+      clientEmail: providedEmail,
+    } = request.body;
     if (!reservationId || !newStatus) {
       return response
         .status(400)
@@ -638,7 +645,7 @@ exports.sendReservationStatusChangeEmail = functions.https.onRequest(async (requ
     }
 
     try {
-      // Obtener la reserva desde Firestore para obtener el email del cliente
+      // Obtener la reserva desde Firestore
       const reservationRef = admin.firestore().collection("reservations").doc(reservationId);
       const reservationDoc = await reservationRef.get();
 
@@ -648,11 +655,12 @@ exports.sendReservationStatusChangeEmail = functions.https.onRequest(async (requ
 
       const reservationData = reservationDoc.data();
 
-      // Obtener el email del cliente desde la colección de usuarios
-      let clientEmail = "";
+      // Obtener el email del cliente: usar el proporcionado si está disponible, sino obtenerlo desde Firestore
+      let clientEmail = providedEmail || "";
       let finalClientName = clientName || "Cliente";
 
-      if (reservationData.clientId) {
+      // Si no se proporcionó el email, intentar obtenerlo desde la reserva
+      if (!clientEmail && reservationData.clientId) {
         try {
           const clientUserDoc = await admin
             .firestore()
@@ -667,6 +675,11 @@ exports.sendReservationStatusChangeEmail = functions.https.onRequest(async (requ
         } catch (error) {
           console.error("Error al obtener email del cliente:", error);
         }
+      }
+
+      // Si aún no tenemos el email, usar el que viene en reservationData si está disponible
+      if (!clientEmail && reservationData.clientEmail) {
+        clientEmail = reservationData.clientEmail;
       }
 
       if (!clientEmail) {
