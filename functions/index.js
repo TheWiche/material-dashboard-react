@@ -1,14 +1,20 @@
 // functions/index.js
 
 const functions = require("firebase-functions");
+const { onRequest } = require("firebase-functions/v2/https");
+const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 // 👇 Importa el middleware de CORS
 const cors = require("cors")({ origin: true });
 
 admin.initializeApp();
 
-// 👇 Configuración de SendGrid (hardcodeada para evitar problemas con secrets)
-const SENDGRID_API_KEY = "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";
+// 👇 Definir el secret de SendGrid para Firebase Functions v2
+const sendgridApiKey = defineSecret("SENDGRID_API_KEY");
+
+// 👇 Configuración de SendGrid
+// IMPORTANTE: La API Key ahora se obtiene de Firebase Secrets para mayor seguridad
+// Para configurar: firebase functions:secrets:set SENDGRID_API_KEY
 const SENDGRID_FROM_EMAIL = "noreply@goaltime.site";
 
 // 👇 Cambiamos de onCall a onRequest
@@ -428,8 +434,9 @@ exports.toggleFieldStatus = functions.https.onRequest(async (request, response) 
 });
 
 // 👇 Función para enviar ticket por correo electrónico
-exports.sendTicketByEmail = functions.https.onRequest(async (request, response) => {
-  cors(request, response, async () => {
+exports.sendTicketByEmail = onRequest(
+  { secrets: [sendgridApiKey], cors: true },
+  async (request, response) => {
     if (request.method !== "POST") {
       return response.status(405).json({ error: "Method Not Allowed" });
     }
@@ -538,6 +545,9 @@ exports.sendTicketByEmail = functions.https.onRequest(async (request, response) 
     // Definir fromEmail fuera del try para que esté disponible en el catch
     let fromEmail = SENDGRID_FROM_EMAIL;
 
+    // Obtener la API Key del secret
+    const SENDGRID_API_KEY = sendgridApiKey.value();
+
     if (!SENDGRID_API_KEY) {
       return response.status(500).json({
         error: "SendGrid API Key not configured.",
@@ -548,12 +558,25 @@ exports.sendTicketByEmail = functions.https.onRequest(async (request, response) 
       // Usar SendGrid SDK oficial (más simple y confiable)
       const sgMail = require("@sendgrid/mail");
 
+      // Validar que la API Key tenga el formato correcto
+      if (!SENDGRID_API_KEY || !SENDGRID_API_KEY.startsWith("SG.")) {
+        console.error("API Key de SendGrid inválida o mal formateada");
+        return response.status(500).json({
+          error:
+            "SendGrid API Key no está configurada correctamente. Verifica que la API Key sea válida y comience con 'SG.'",
+        });
+      }
+
       // Configurar la API Key de SendGrid
       sgMail.setApiKey(SENDGRID_API_KEY);
 
       console.log("Configuración de SendGrid lista");
       console.log("Correo remitente:", fromEmail);
       console.log("Correo destinatario:", clientEmail);
+      console.log(
+        "API Key configurada (primeros 10 caracteres):",
+        SENDGRID_API_KEY.substring(0, 10) + "..."
+      );
 
       // Preparar el mensaje de email
       const msg = {
@@ -632,10 +655,27 @@ exports.sendTicketByEmail = functions.https.onRequest(async (request, response) 
       console.error("Error stack:", error.stack);
       console.error("Error response:", error.response?.body || "No response body");
       console.error("Error message:", error.message);
+      console.error("Error code:", error.code);
+      console.error("Error status:", error.response?.statusCode || error.status);
 
       // Mensaje de error más descriptivo
       let errorMessage = "Error al enviar el ticket por correo.";
       let errorDetails = error.message;
+
+      // Manejar específicamente el error 401 (Unauthorized)
+      if (error.code === 401 || error.response?.statusCode === 401) {
+        errorMessage =
+          "La API Key de SendGrid no es válida o ha expirado. Por favor, verifica la configuración en SendGrid.";
+        errorDetails =
+          "Error 401: Unauthorized. La API Key podría estar expirada, revocada o no tener permisos suficientes.";
+
+        return response.status(500).json({
+          error: errorMessage,
+          details: errorDetails,
+          suggestion:
+            "Verifica tu API Key en SendGrid Dashboard → Settings → API Keys. Asegúrate de que tenga permisos de 'Mail Send' y que no esté expirada.",
+        });
+      }
 
       if (error.response?.body?.errors) {
         const sendGridErrors = error.response.body.errors;
@@ -677,12 +717,13 @@ exports.sendTicketByEmail = functions.https.onRequest(async (request, response) 
         details: errorDetails,
       });
     }
-  });
-});
+  }
+);
 
 // 👇 Función para enviar notificación por correo de cambio de estado de reserva
-exports.sendReservationStatusChangeEmail = functions.https.onRequest(async (request, response) => {
-  cors(request, response, async () => {
+exports.sendReservationStatusChangeEmail = onRequest(
+  { secrets: [sendgridApiKey], cors: true },
+  async (request, response) => {
     if (request.method !== "POST") {
       return response.status(405).json({ error: "Method Not Allowed" });
     }
@@ -766,7 +807,7 @@ exports.sendReservationStatusChangeEmail = functions.https.onRequest(async (requ
       }
 
       const sgMail = require("@sendgrid/mail");
-      const sendGridApiKey = SENDGRID_API_KEY;
+      const sendGridApiKey = sendgridApiKey.value();
 
       if (!sendGridApiKey) {
         return response.status(500).json({
@@ -933,5 +974,5 @@ exports.sendReservationStatusChangeEmail = functions.https.onRequest(async (requ
         details: errorDetails,
       });
     }
-  });
-});
+  }
+);
