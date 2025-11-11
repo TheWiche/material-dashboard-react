@@ -443,40 +443,121 @@ exports.sendTicketByEmail = functions.https.onRequest(async (request, response) 
       return response.status(401).json({ error: "Unauthorized: Invalid token." });
     }
 
-    const { email, reservationId, reservationData, userProfile, ticketHTML } = request.body;
-    if (!email || !reservationId || !ticketHTML) {
+    const {
+      email: providedEmail,
+      reservationId,
+      reservationData,
+      userProfile,
+      ticketHTML,
+    } = request.body;
+    if (!reservationId || !ticketHTML) {
       return response
         .status(400)
-        .json({ error: "Bad Request: email, reservationId, and ticketHTML are required." });
+        .json({ error: "Bad Request: reservationId and ticketHTML are required." });
+    }
+
+    // Obtener el email del cliente: usar el proporcionado si está disponible, sino obtenerlo desde Firestore
+    let clientEmail = providedEmail || "";
+    let finalUserName = userProfile?.name || "Usuario";
+
+    // Si no se proporcionó el email, intentar obtenerlo desde el token o desde Firestore
+    if (!clientEmail) {
+      // Primero intentar desde el token
+      clientEmail = decodedToken.email || "";
+
+      // Si no está en el token, obtenerlo desde Firestore usando el UID del token
+      if (!clientEmail && decodedToken.uid) {
+        try {
+          const userDoc = await admin.firestore().collection("users").doc(decodedToken.uid).get();
+          if (userDoc.exists) {
+            const userData = userDoc.data();
+            clientEmail = userData.email || "";
+            finalUserName = userData.name || finalUserName;
+          }
+        } catch (error) {
+          console.error("Error al obtener email del usuario desde Firestore:", error);
+        }
+      }
+    }
+
+    // Si aún no tenemos el email, intentar obtenerlo desde la reserva
+    if (!clientEmail && reservationData?.clientId) {
+      try {
+        const clientUserDoc = await admin
+          .firestore()
+          .collection("users")
+          .doc(reservationData.clientId)
+          .get();
+        if (clientUserDoc.exists) {
+          const clientUserData = clientUserDoc.data();
+          clientEmail = clientUserData.email || "";
+          finalUserName = clientUserData.name || finalUserName;
+        }
+      } catch (error) {
+        console.error("Error al obtener email del cliente desde la reserva:", error);
+      }
+    }
+
+    // Si aún no tenemos el email, usar el que viene en reservationData si está disponible
+    if (!clientEmail && reservationData?.clientEmail) {
+      clientEmail = reservationData.clientEmail;
+    }
+
+    if (!clientEmail) {
+      return response.status(400).json({
+        error:
+          "No se pudo obtener el correo electrónico del usuario. Por favor, verifica que tu perfil tenga un email válido.",
+      });
     }
 
     // Verificar que el usuario esté enviando el ticket a su propio correo
-    if (decodedToken.email !== email) {
-      return response
-        .status(403)
-        .json({ error: "Forbidden: You can only send tickets to your own email." });
+    // Priorizar verificación por UID (más confiable), luego por email
+    let isAuthorized = false;
+
+    // Verificar por UID (más confiable)
+    if (decodedToken.uid && reservationData?.clientId) {
+      isAuthorized = decodedToken.uid === reservationData.clientId;
+    }
+
+    // Si no se pudo verificar por UID, verificar por email
+    if (!isAuthorized && decodedToken.email) {
+      isAuthorized = decodedToken.email.toLowerCase() === clientEmail.toLowerCase();
+    }
+
+    // Si aún no está autorizado y se proporcionó un email, verificar que coincida con el del token
+    if (!isAuthorized && providedEmail && decodedToken.email) {
+      isAuthorized = providedEmail.toLowerCase() === decodedToken.email.toLowerCase();
+    }
+
+    if (!isAuthorized) {
+      return response.status(403).json({
+        error: "Forbidden: You can only send tickets to your own email.",
+      });
     }
 
     // Definir fromEmail fuera del try para que esté disponible en el catch
-    let fromEmail = "noreply@goaltime.site";
+    let fromEmail = SENDGRID_FROM_EMAIL;
+
+    if (!SENDGRID_API_KEY) {
+      return response.status(500).json({
+        error: "SendGrid API Key not configured.",
+      });
+    }
 
     try {
       // Usar SendGrid SDK oficial (más simple y confiable)
       const sgMail = require("@sendgrid/mail");
 
-      // Configurar la API Key de SendGrid (hardcodeada)
+      // Configurar la API Key de SendGrid
       sgMail.setApiKey(SENDGRID_API_KEY);
 
       console.log("Configuración de SendGrid lista");
-
-      // Usar el correo remitente configurado
-      fromEmail = SENDGRID_FROM_EMAIL;
-
       console.log("Correo remitente:", fromEmail);
+      console.log("Correo destinatario:", clientEmail);
 
       // Preparar el mensaje de email
       const msg = {
-        to: email,
+        to: clientEmail,
         from: {
           email: fromEmail, // Debe estar verificado en SendGrid
           name: "GoalTime",
@@ -496,9 +577,7 @@ exports.sendTicketByEmail = functions.https.onRequest(async (request, response) 
               </div>
               
               <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <p style="margin: 0 0 10px 0;">Hola <strong>${
-                  userProfile?.name || "Usuario"
-                }</strong>,</p>
+                <p style="margin: 0 0 10px 0;">Hola <strong>${finalUserName}</strong>,</p>
                 <p style="margin: 0 0 15px 0;">Adjunto encontrarás el ticket de tu reserva.</p>
                 <p style="margin: 0;">Gracias por usar GoalTime.</p>
               </div>
@@ -517,7 +596,7 @@ exports.sendTicketByEmail = functions.https.onRequest(async (request, response) 
         text: `
           Ticket de Reserva GoalTime
           
-          Hola ${userProfile?.name || "Usuario"},
+          Hola ${finalUserName},
           
           Adjunto encontrarás el ticket de tu reserva.
           
@@ -526,7 +605,7 @@ exports.sendTicketByEmail = functions.https.onRequest(async (request, response) 
           - Cancha: ${reservationData?.fieldName || "N/A"}
           - Fecha: ${reservationData?.date || "N/A"}
           - Hora: ${reservationData?.startTime || "N/A"} - ${reservationData?.endTime || "N/A"}
-          - Total: $${reservationData?.totalPrice || "0"}
+          - Total: $${(reservationData?.totalPrice || 0).toLocaleString()}
           
           Gracias por usar GoalTime.
           
@@ -539,7 +618,7 @@ exports.sendTicketByEmail = functions.https.onRequest(async (request, response) 
       await sgMail.send(msg);
 
       console.log("Email enviado exitosamente con SendGrid:", {
-        to: email,
+        to: clientEmail,
         reservationId,
         fromEmail: fromEmail,
       });
@@ -596,8 +675,6 @@ exports.sendTicketByEmail = functions.https.onRequest(async (request, response) 
       return response.status(500).json({
         error: errorMessage,
         details: errorDetails,
-        fromEmail: fromEmail, // Para debugging
-        errorType: error.name || "Unknown",
       });
     }
   });
